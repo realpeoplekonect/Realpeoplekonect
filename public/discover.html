@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111111">
+  <title>REALPEOPLEKONECT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="/images/realpeoplekonekt-logo.png">
+  <link rel="apple-touch-icon" href="/images/realpeoplekonekt-logo.png">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body data-current-page="discover">
+  <div id="toast" class="toast"></div>
+  <header class="topbar">
+    <a class="brand" href="#" data-page="home" aria-label="REALPEOPLEKONEKT home"><img src="/images/realpeoplekonekt-logo.png" alt="REALPEOPLEKONEKT" class="brand-logo"></a>
+    <nav id="mainNav" class="main-nav">
+      <button data-page="home" class="nav-link active">Home</button>
+      <button data-page="discover" class="nav-link">Discover</button>
+      <button data-page="feed" class="nav-link">Community</button>
+      <!-- <button data-page="connections" class="nav-link">Connections</button> -->
+        <button data-page="connections" class="nav-link">
+  Connections
+  <span id="connectionRequestBadge"
+        class="notification-badge hidden">0</span>
+</button>
+      <button data-page="messages" class="nav-link">Messages</button><button data-page="premium" class="nav-link">♛ Premium</button>
+    </nav>
+    <div class="top-actions"><button id="loginOpen" class="btn btn-ghost">Log in</button><button id="registerOpen" class="btn btn-primary">Create Account</button><button id="profileButton" class="btn btn-ghost hidden" aria-label="Open profile">My profile</button><button id="logoutButton" class="btn btn-logout hidden" type="button">Log out</button></div>
+  </header>
+
+  <main>
+    <section id="page-home" class="page">
+      <div class="hero">
+        <div class="hero-copy">
+          <span class="eyebrow"><i></i> REAL PEOPLE, REAL CONNECTION </span>
+          <h1>Make room for<br><em>real connection</em></h1>
+          <p>Meet genuine people, share your world and build relationships that mean something. Friendship, community or the possibility of real love — start with a hello.</p>
+          <div class="hero-actions"><button class="btn btn-primary btn-large" id="heroJoin">Create your account <span>↗</span></button><button class="btn btn-outline btn-large" data-page="discover">Explore LINKUP</button></div>
+          <div class="hero-proof"><div class="avatar-stack"><b>A</b><b>M</b><b>J</b><b>+</b></div><span>A community built around <strong>authentic connection</strong></span></div>
+        </div>
+        <div class="hero-art">
+          <div class="hero-image"><img src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1000&q=85" alt="Friends enjoying time together"></div>
+          <div class="floating-note"><span class="note-icon">♡</span><div><strong>Good things begin</strong><small>with a conversation.</small></div></div>
+          <div class="orange-orb"></div>
+        </div>
+      </div>
+      <div class="feature-strip">
+        <div><span>01</span><strong>Meet people</strong><small>Discover people with shared interests.</small></div>
+        <div><span>02</span><strong>Share moments</strong><small>Post photos and join conversations.</small></div>
+        <div><span>03</span><strong>Build connection</strong><small>Connect and chat when it feels right.</small></div>
+      </div>
+      <div class="section-heading"><div><span class="eyebrow">A COMMUNITY WITH HEART</span><h2>Connection looks good on you.</h2></div><button class="text-link" data-page="discover">Meet the community ↗</button></div>
+      <div id="homePeople" class="people-grid"></div>
+    </section>
+
+    <section id="page-discover" class="page active">
+      <div class="page-heading"><div><span class="eyebrow">FIND YOUR PEOPLE</span><h1>Discover <em> real connections</em></h1><p>Explore profiles and connect with real people who share your energy.</p></div></div>
+      <form id="advancedSearchForm" class="advanced-search"><input name="q" placeholder="Search name, bio or interests"><button class="btn btn-primary" type="submit">Search</button><span>♛ Advanced search is a Premium feature</span></form><div id="discoverGrid" class="people-grid"></div>
+    </section>
+
+    <section id="page-feed" class="page">
+      <div class="page-heading"><div><span class="eyebrow">THE LINKUP COMMUNITY</span><h1>Moments worth <em>sharing.</em></h1><p>Share a photo, leave a kind comment and celebrate each other.</p></div></div>
+      <div class="feed-layout">
+        <div class="feed-main">
+          <form id="postForm" class="composer card">
+            <div class="composer-top"><div class="avatar" id="composerAvatar">L</div><label for="postCaption">What would you like to share?</label></div>
+            <textarea id="postCaption" maxlength="1000" placeholder="Share a moment, thought or something that made you smile..." required></textarea>
+            <div class="composer-bottom"><label class="upload-label" for="postImage">＋ Add photo or video</label><input id="postImage" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" hidden><span id="fileName" class="muted">Photos or videos · max 100MB</span><button class="btn btn-primary" type="submit">Share post ↗</button></div>
+          </form>
+          <div id="feedPosts" class="feed-posts"></div>
+        </div>
+        <aside class="side-card card"><span class="eyebrow">COMMUNITY GUIDELINES</span><h3>Keep it kind. Keep it real.</h3><p>Respect boundaries, celebrate differences and report anything that makes you feel unsafe.</p><div class="guideline">✓ Be respectful and authentic</div><div class="guideline">✓ Protect your personal information</div><div class="guideline">✓ Only connect with consenting adults</div></aside>
+      </div>
+    </section>
+
+    <section id="page-connections" class="page">
+      <div class="page-heading"><div><span class="eyebrow">YOUR CIRCLE</span><h1>Connections <em>begin here.</em></h1><p>Review incoming requests and grow your circle.</p></div></div>
+      <div id="requestsList" class="requests-list card"></div>
+    </section>
+
+    <section id="page-messages" class="page active">
+      <div class="page-heading"><div><span class="eyebrow">SAY HELLO</span><h1>Your <em>conversations.</em></h1><p>Private conversations with people you have connected with.</p></div></div>
+      <div class="messenger card">
+        <aside class="conversation-sidebar"><div class="conversation-sidebar-head"><h3>Messages</h3><span>YOUR CONNECTIONS</span></div><div id="conversationList" class="conversation-list"><div class="conversation-empty">Loading your connections…</div></div></aside>
+        <section class="chat-panel">
+          <div id="chatEmpty" class="chat-empty"><div class="message-symbol">✉</div><h3>Your next great conversation starts here.</h3><p>Select a connection to send a private message, or discover someone new.</p><button class="btn btn-primary" data-page="discover">Discover people</button></div>
+          <div id="activeChat" class="active-chat hidden">
+            <header class="chat-header"><img id="chatUserPhoto" src="https://placehold.co/90x90/191919/ff8129?text=L" alt=""><div><strong id="chatUserName">Member</strong><small id="chatUserStatus">Connected on LINKUP</small></div><div class="chat-call-actions"><button type="button" class="call-action-btn" data-call-type="audio" title="Audio call">☎</button><button type="button" class="call-action-btn" data-call-type="video" title="Video call">▣</button></div></header>
+            <div id="chatMessages" class="chat-messages" aria-live="polite"></div>
+            <form id="chatForm" class="chat-composer"><input id="chatInput" name="text" maxlength="3000" placeholder="Write a message…" autocomplete="off" required><label class="chat-attach-btn" title="Attach audio or video">＋<input id="chatMediaInput" type="file" accept="audio/*,video/mp4,video/webm,video/quicktime" hidden></label><button type="button" id="recordVoiceBtn" class="chat-attach-btn" title="Record voice message">🎙</button><button type="submit" class="btn btn-primary">Send ↗</button></form>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="page-profile" class="page">
+      <div class="page-heading"><div><span class="eyebrow">YOUR SPACE</span><h1>Your <em>profile.</em></h1><p>Show the community who you are, one moment at a time.</p></div></div>
+      <div class="profile-cover card"><div class="profile-display-photo"><img id="myProfilePhoto" src="https://placehold.co/240x240/191919/ff8129?text=LINKUP" alt="Your profile photo"><label for="profilePhotoInput" class="photo-edit-badge">＋ Change photo</label><input id="profilePhotoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden></div><div class="profile-cover-copy"><span class="eyebrow">YOUR REALPEOPLEKONECT IDENTITY</span><h2 id="profileDisplayName">Your name</h2><p id="profileDisplayBio">Add a profile photo and tell people a little about yourself.</p></div></div>
+      <div class="profile-workspace"><form id="profileForm" class="card profile-form"><div class="panel-heading"><h3>Edit your details</h3></div><label>Display name<input name="name" required maxlength="70"></label><label>Age<input name="age" type="number" min="18" max="100"></label><label>Gender<input name="gender" placeholder="Optional"></label><label>I'm looking for<input name="lookingFor" placeholder="Friendship, relationship, community..."></label><label>About me<textarea name="bio" maxlength="500" rows="4"></textarea></label><label>Interests <input name="interests" placeholder="Music, travel, books (separate with commas)"></label><button class="btn btn-primary" type="submit">Save profile details</button></form>
+      <div class="card gallery-manager"><div class="panel-heading"><div><span class="eyebrow">YOUR PHOTO STORY</span><h3>Profile gallery</h3></div><span class="gallery-count" id="galleryCount">0 photos</span></div><p class="gallery-intro">Upload multiple photos for other LINKUP members to view, like, comment on and share.</p><form id="galleryUploadForm" class="gallery-upload"><label class="gallery-drop" for="galleryFiles"><span>＋</span><strong>Add photos to your profile</strong><small>Select up to 10 images per upload · JPG, PNG or WEBP · 8MB each</small></label><input id="galleryFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden><div id="gallerySelection" class="muted">No photos selected</div><button class="btn btn-primary" type="submit">Upload to gallery</button></form><div id="myGallery" class="gallery-grid"></div></div></div>
+    </section>
+    <section id="page-public-profile" class="page"><button class="text-link back-link" data-page="discover">← Back to discover</button><div id="publicProfileContent"></div></section>
+
+    <section id="page-admin" class="page">
+      <div class="page-heading"><div><span class="eyebrow">PLATFORM CONTROL</span><h1>Admin <em>overview.</em></h1><p>Monitor registrations, sign-ins, online presence and community activity.</p></div><span class="live-pill"><i></i> LIVE ACTIVITY</span></div>
+      <div class="stats-grid">
+        <div class="stat-card"><small>Total members</small><strong id="statUsers">—</strong><span>Registered accounts</span></div>
+        <div class="stat-card"><small>Online now</small><strong id="statOnline">—</strong><span>Currently connected</span></div>
+        <div class="stat-card"><small>Offline</small><strong id="statOffline">—</strong><span>Not currently connected</span></div>
+        <div class="stat-card"><small>Joined today</small><strong id="statNew">—</strong><span>New registrations</span></div>
+        <div class="stat-card"><small>Community posts</small><strong id="statPosts">—</strong><span>Total posts</span></div>
+      </div>
+      <div class="admin-columns"><div class="card admin-panel"><div class="panel-heading"><h3>Recent activity</h3><span class="live-pill"><i></i> LIVE</span></div><div id="activityList" class="activity-list"></div></div><div class="card admin-panel"><div class="panel-heading"><h3>Member management</h3></div><div id="adminUsers" class="admin-users"></div></div></div>
+    </section>
+  </main>
+
+  <footer><a class="brand" href="#" aria-label="REALPEOPLEKONEKT home"><img src="/images/realpeoplekonekt-logo.png" alt="REALPEOPLEKONEKT" class="footer-brand-logo"></a><span>Real people. Real connections. © <span id="year"></span> LINKUP</span><span>Be kind. Be genuine. Be you.</span></footer>
+
+  <div id="authModal" class="modal hidden"><div class="modal-backdrop" data-close></div><div class="modal-card"><button class="modal-close" data-close>×</button><img src="/images/realpeoplekonekt-logo.png" alt="REALPEOPLEKONEKT" class="auth-brand-logo"><span class="eyebrow">WELCOME TO REALPEOPLEKONEKT</span><h2 id="authTitle">Create your account.</h2><p id="authSubtitle">Your next chapter starts with a hello.</p><form id="authForm"><div id="nameField"><label>Your name<input name="name" autocomplete="name"></label></div><label>Email address<input name="email" type="email" required autocomplete="email"></label><label>Password<input name="password" type="password" required minlength="8" autocomplete="current-password"></label><div id="ageField"><label>Age (18+)<input name="age" type="number" min="18" max="100"></label></div><button class="btn btn-primary btn-large full" id="authSubmit">Create account</button></form><button type="button" id="resendVerification" class="text-link hidden" style="margin-top:12px">Resend confirmation email</button><p class="switch-auth" id="authSwitch">Already a member? <button type="button" id="switchMode">Log in</button></p></div></div>
+<div id="callOverlay" class="call-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="callTitle">
+    <div class="call-panel">
+      <div class="call-avatar" id="callAvatar">R</div>
+      <h2 id="callTitle">Calling…</h2>
+      <p id="callStatus">Connecting securely</p>
+      <video id="remoteCallVideo" autoplay playsinline></video>
+      <video id="localCallVideo" autoplay muted playsinline></video>
+      <div class="call-controls">
+        <button type="button" id="callMuteBtn" class="call-control">Mute</button>
+        <button type="button" id="callCameraBtn" class="call-control">Camera off</button>
+        <button type="button" id="callAcceptBtn" class="call-control accept hidden">Accept</button>
+        <button type="button" id="callRejectBtn" class="call-control reject hidden">Decline</button>
+        <button type="button" id="callEndBtn" class="call-control reject">End call</button>
+      </div>
+    </div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script><script src="/js/app.js"></script>
+</body></html>

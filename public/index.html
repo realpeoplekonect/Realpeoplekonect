@@ -90,7 +90,35 @@
         <section class="chat-panel">
           <div id="chatEmpty" class="chat-empty"><div class="message-symbol">✉</div><h3>Your next great conversation starts here.</h3><p>Select a connection to send a private message, or discover someone new.</p><button class="btn btn-primary" data-page="discover">Discover people</button></div>
           <div id="activeChat" class="active-chat hidden">
-            <header class="chat-header"><img id="chatUserPhoto" src="https://placehold.co/90x90/191919/ff8129?text=L" alt=""><div><strong id="chatUserName">Member</strong><small id="chatUserStatus">Connected on LINKUP</small></div><div class="chat-call-actions"><button type="button" class="call-action-btn" data-call-type="audio" title="Audio call">☎</button><button type="button" class="call-action-btn" data-call-type="video" title="Video call">▣</button></div></header>
+            <header class="chat-header"><img id="chatUserPhoto" src="https://placehold.co/90x90/191919/ff8129?text=L" alt=""><div><strong id="chatUserName">Member</strong><small id="chatUserStatus">Connected on LINKUP</small></div>
+              
+<div class="chat-call-actions">
+  <button type="button" class="call-action-btn modern-call-btn"
+          data-call-type="audio" title="Audio call" aria-label="Audio call">
+    <svg viewBox="0 0 24 24" width="21" height="21" fill="none"
+         stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 16.9v3a2 2 0 0 1-2.2 2
+      19.8 19.8 0 0 1-8.6-3.1
+      19.5 19.5 0 0 1-6-6
+      19.8 19.8 0 0 1-3.1-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7
+      c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.4 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.4 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>
+    </svg>
+  </button>
+
+  <button type="button" class="call-action-btn modern-call-btn modern-video-btn"
+          data-call-type="video" title="Video call" aria-label="Video call">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
+         stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="6" width="13" height="12" rx="2"/>
+      <path d="m16 10 5-3v10l-5-3"/>
+    </svg>
+  </button>
+</div>
+
+
+</header>
             <div id="chatMessages" class="chat-messages" aria-live="polite"></div>
             <form id="chatForm" class="chat-composer"><input id="chatInput" name="text" maxlength="3000" placeholder="Write a message…" autocomplete="off" required><label class="chat-attach-btn" title="Attach audio or video">＋<input id="chatMediaInput" type="file" accept="audio/*,video/mp4,video/webm,video/quicktime" hidden></label><button type="button" id="recordVoiceBtn" class="chat-attach-btn" title="Record voice message">🎙</button><button type="submit" class="btn btn-primary">Send ↗</button></form>
           </div>

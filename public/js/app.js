@@ -573,7 +573,50 @@ function personCard(user){
   const action = user.isConnected
     ? `<button class="btn btn-primary full message-user-btn" data-id="${user._id}" data-name="${escapeHTML(user.name)}" data-photo="${escapeHTML(photo)}">Message</button>`
     : `<button class="btn btn-primary full connect-btn" data-id="${user._id}">＋ Connect</button>`;
-  const callActions = `<div class="profile-call-actions"><button type="button" class="call-action-btn" data-call-user="${user._id}" data-call-name="${escapeHTML(user.name)}" data-call-photo="${escapeHTML(photo)}" data-call-type="audio">☎ Audio call</button><button type="button" class="call-action-btn" data-call-user="${user._id}" data-call-name="${escapeHTML(user.name)}" data-call-photo="${escapeHTML(photo)}" data-call-type="video">▣ Video call</button></div>`;
+
+
+  
+const callActions = `<div class="profile-call-actions">
+  <button type="button" class="call-action-btn"
+    data-call-user="${user._id}"
+    data-call-name="${escapeHTML(user.name)}"
+    data-call-photo="${escapeHTML(photo)}"
+    data-call-type="audio">
+    <svg viewBox="0 0 24 24" width="19" height="19" fill="none"
+      stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2
+      19.79 19.79 0 0 1-8.63-3.07
+      19.5 19.5 0 0 1-6-6
+      19.79 19.79 0 0 1-3.07-8.67
+      A2 2 0 0 1 4.11 2h3
+      a2 2 0 0 1 2 1.72
+      c.12.96.36 1.9.72 2.79
+      a2 2 0 0 1-.45 2.11L8.11 9.89
+      a16 16 0 0 0 6 6l1.27-1.27
+      a2 2 0 0 1 2.11-.45
+      c.89.36 1.83.6 2.79.72
+      A2 2 0 0 1 22 16.92z"/>
+    </svg>
+    <span>Audio call</span>
+  </button>
+
+  <button type="button" class="call-action-btn video-call-btn"
+    data-call-user="${user._id}"
+    data-call-name="${escapeHTML(user.name)}"
+    data-call-photo="${escapeHTML(photo)}"
+    data-call-type="video">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+      stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
+      <rect x="3" y="6" width="13" height="12" rx="2"/>
+      <path d="m16 10 5-3v10l-5-3"/>
+    </svg>
+    <span>Video call</span>
+  </button>
+</div>`;
   return `<article class="person-card" data-user-id="${user._id}"><div class="person-photo profile-open" data-profile-id="${user._id}" role="button" tabindex="0"><img src="${escapeHTML(photo)}" alt="${escapeHTML(user.name)}"><i class="online-dot" style="display:${user.isOnline?"block":"none"}"></i></div><div class="person-info"><h3 class="profile-open" data-profile-id="${user._id}" role="button" tabindex="0">${escapeHTML(user.name)}${user.isPremium?' <span class="premium-badge" title="Premium member">♛</span>':""}${user.age?`, ${user.age}`:""}</h3><p>${escapeHTML(user.bio||"Ready to meet new people and make meaningful connections.")}</p>${(user.interests||[]).slice(0,3).map(x=>`<span class="tag">${escapeHTML(x)}</span>`).join("")}${action}${callActions}</div></article>`;
 }
 async function loadDiscover(query=""){

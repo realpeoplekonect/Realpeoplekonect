@@ -1165,4 +1165,27 @@ footer .footer-brand-logo { display: block; width: 170px; height: 58px; object-f
 .voice-note-btn:active {
     transform: scale(0.95);
 }
+.video-call-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #ff8129;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 11px 16px;
+  font-weight: 600;
+  transition: all 0.25s ease;
+}
+
+.video-call-btn:hover {
+  background: #e96c16;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255, 129, 41, 0.25);
+}
+
+.video-call-btn svg {
+  flex-shrink: 0;
+}
 

@@ -628,7 +628,15 @@ const requestHTML = requests.map(r=>`<div class="request-row"><div class="connec
 function messageTime(value){return value?new Date(value).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}):"";}
 function renderConversationItem(item){
   const user=item.user; const last=item.lastMessage;
-  return `<button type="button" class="conversation-item ${state.activeConversation?.id===String(user._id)?"active":""}" data-conversation-id="${user._id}" data-name="${escapeHTML(user.name)}" data-photo="${escapeHTML(user.photo||"")}"><img src="${escapeHTML(user.photo||"https://placehold.co/90x90/191919/ff8129?text=L")}" alt=""><span class="conversation-copy"><strong>${escapeHTML(user.name)}</strong><small>${escapeHTML(last?.mediaType === "audio" ? "🎤 Voice message" : last?.mediaType === "video" ? "▣ Video" : (last?.text||"Start a conversation"))}</small></span><span class="conversation-meta">${last?messageTime(last.createdAt):""}${item.unreadCount?`<b>${item.unreadCount}</b>`:""}</span></button>`;
+  return `<button type="button" class="conversation-item ${state.activeConversation?.id===String(user._id)?"active":""}" data-conversation-id="${user._id}" data-name="${escapeHTML(user.name)}" data-photo="${escapeHTML(user.photo||"")}"><img src="${escapeHTML(user.photo||"https://placehold.co/90x90/191919/ff8129?text=L")}" alt=""><span class="conversation-copy"><strong>${escapeHTML(user.name)}</strong><small>${escapeHTML
+    (
+   last?.mediaType === "image" ? "📷 Image" :
+   last?.mediaType === "audio" ? "🎤 Voice message" :
+   last?.mediaType === "video" ? "▣ Video" :
+   (last?.text || "Start a conversation")
+    
+  
+  )}</small></span><span class="conversation-meta">${last?messageTime(last.createdAt):""}${item.unreadCount?`<b>${item.unreadCount}</b>`:""}</span></button>`;
 }
 async function loadConversations(){
   const list=$("#conversationList"); if(!list)return;
@@ -637,19 +645,40 @@ async function loadConversations(){
 }
 
 
+
 function appendMessage(message) {
   const container = $("#chatMessages");
   if (!container) return;
+
   const mine =
     String(message.sender) === String(state.user?._id);
+
   const row = document.createElement("div");
   row.className = `chat-message ${mine ? "mine" : "theirs"}`;
+
   if (message._id) {
     row.dataset.messageId = String(message._id);
   }
 
-  // Audio attachment.
-  if (message.mediaType === "audio" && message.mediaUrl) {
+  // Image attachment
+  if (message.mediaType === "image" && message.mediaUrl) {
+    const imageButton = document.createElement("button");
+    imageButton.type = "button";
+    imageButton.className = "chat-image-open";
+    imageButton.setAttribute("aria-label", "View shared image");
+
+    const image = document.createElement("img");
+    image.className = "chat-shared-image";
+    image.src = message.mediaUrl;
+    image.alt = "Image shared in conversation";
+    image.loading = "lazy";
+
+    imageButton.append(image);
+    row.append(imageButton);
+  }
+
+  // Audio attachment
+  else if (message.mediaType === "audio" && message.mediaUrl) {
     const player = document.createElement("audio");
     player.controls = true;
     player.preload = "metadata";
@@ -657,7 +686,7 @@ function appendMessage(message) {
     row.append(player);
   }
 
-  // Video attachment.
+  // Video attachment
   else if (message.mediaType === "video" && message.mediaUrl) {
     const player = document.createElement("video");
     player.controls = true;
@@ -668,7 +697,7 @@ function appendMessage(message) {
     row.append(player);
   }
 
-  // Text message.
+  // Text message
   if (message.text) {
     const bubble = document.createElement("div");
     bubble.className = "chat-bubble";
@@ -676,7 +705,7 @@ function appendMessage(message) {
     row.append(bubble);
   }
 
-  // Message time and read receipt.
+  // Message time and read receipt
   const meta = document.createElement("small");
   meta.className = "chat-message-meta";
 
@@ -686,7 +715,6 @@ function appendMessage(message) {
 
   if (mine) {
     const ticks = document.createElement("span");
-
     ticks.className = "message-read-ticks";
     ticks.textContent = message.readAt ? "✓✓" : "✓";
 
@@ -697,15 +725,14 @@ function appendMessage(message) {
     } else {
       ticks.title = "Sent";
     }
-
     meta.append(ticks);
   }
-
   row.append(meta);
   container.append(row);
-
   container.scrollTop = container.scrollHeight;
 }
+
+
 async function openConversation(userId,name,photo){
   state.activeConversation={id:String(userId),name:name||"LINKUP member",photo:photo||""};
   $("#chatEmpty")?.classList.add("hidden");$("#activeChat")?.classList.remove("hidden");
@@ -1789,6 +1816,7 @@ document.addEventListener("click", async event => {
 // Audio/video attachment sharing in private conversations.
 
 
+
 async function uploadChatMedia(file) {
   if (!file || !state.activeConversation) return;
 
@@ -1797,15 +1825,61 @@ async function uploadChatMedia(file) {
     return;
   }
 
+  const isImage = file.type.startsWith("image/");
+  const isVideo = file.type.startsWith("video/");
+  const isAudio = file.type.startsWith("audio/");
+
+  if (!isImage && !isVideo && !isAudio) {
+    toast("Choose an image, audio recording, or video.");
+    return;
+  }
+
+  const allowedImageTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif"
+  ];
+
+  const allowedVideoTypes = [
+    "video/mp4",
+    "video/webm",
+    "video/quicktime"
+  ];
+
+  const allowedAudioTypes = [
+    "audio/webm",
+    "audio/mp4",
+    "audio/mpeg",
+    "audio/ogg"
+  ];
+
+  const allowedTypes = isImage
+    ? allowedImageTypes
+    : isVideo
+      ? allowedVideoTypes
+      : allowedAudioTypes;
+
+  if (!allowedTypes.includes(file.type)) {
+    toast("This file format is not supported.");
+    return;
+  }
+
+  const maxSize = 100 * 1024 * 1024;
+
+  if (file.size > maxSize) {
+    toast("The file is too large. Maximum size is 100MB.");
+    return;
+  }
+
   state.chatMediaUploading = true;
 
   const container = $("#chatMessages");
-  const isVideo = file.type.startsWith("video/");
-  const mediaLabel = isVideo ? "Video" : "Audio";
+  const mediaLabel = isImage ? "Image" : isVideo ? "Video" : "Audio";
 
-  // Create upload progress display.
   const progressRow = document.createElement("div");
-  progressRow.className = "chat-message mine media-upload-progress";
+  progressRow.className =
+    "chat-message mine media-upload-progress";
 
   const title = document.createElement("strong");
   title.className = "upload-file-name";
@@ -1871,7 +1945,7 @@ async function uploadChatMedia(file) {
 
         try {
           data = JSON.parse(xhr.responseText || "{}");
-        } catch (error) {
+        } catch {
           return reject(new Error("Invalid server response."));
         }
 
@@ -1916,6 +1990,57 @@ async function uploadChatMedia(file) {
     state.chatMediaUploading = false;
   }
 }
+
+(function initChatImageViewer() {
+  if (window.chatImageViewerInitialized) return;
+  window.chatImageViewerInitialized = true;
+
+  const viewer = document.createElement("div");
+  viewer.className = "chat-image-viewer";
+  viewer.innerHTML = `
+    <button type="button" class="chat-image-viewer-close"
+      aria-label="Close image viewer">&times;</button>
+    <img src="" alt="Shared image enlarged">
+  `;
+
+  document.body.append(viewer);
+
+  const preview = viewer.querySelector("img");
+  const closeButton = viewer.querySelector(
+    ".chat-image-viewer-close"
+  );
+
+  function closeViewer() {
+    viewer.classList.remove("active");
+    preview.src = "";
+    document.body.style.overflow = "";
+  }
+
+  document.addEventListener("click", event => {
+    const button = event.target.closest(".chat-image-open");
+    if (!button) return;
+
+    const image = button.querySelector("img");
+    if (!image?.src) return;
+
+    preview.src = image.src;
+    viewer.classList.add("active");
+    document.body.style.overflow = "hidden";
+  });
+
+  closeButton.addEventListener("click", closeViewer);
+
+  viewer.addEventListener("click", event => {
+    if (event.target === viewer) closeViewer();
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && viewer.classList.contains("active")) {
+      closeViewer();
+    }
+  });
+})();
+
 document.addEventListener("change",event=>{
   if(event.target.matches("#chatMediaInput")) {
     const file=event.target.files?.[0];if(file)uploadChatMedia(file);event.target.value="";

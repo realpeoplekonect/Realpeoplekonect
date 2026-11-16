@@ -7,11 +7,36 @@ const multer = require("multer");
 const cloudinary = require("../utils/cloudinary");
 const mediaUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 100 * 1024 * 1024 },
+  limits: {
+    fileSize: 100 * 1024 * 1024
+  },
   fileFilter: (_req, file, cb) => {
-    const mime = String(file.mimetype || "").split(";")[0].toLowerCase();
-    const ok = /^(audio\/(webm|mp4|mpeg|ogg)|video\/(mp4|webm|quicktime))$/.test(mime);
-    cb(ok ? null : new Error("Choose a supported audio or video file."), ok);
+    const mime = String(file.mimetype || "")
+      .split(";")[0]
+      .toLowerCase();
+
+    const allowed = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+      "audio/webm",
+      "audio/mp4",
+      "audio/mpeg",
+      "audio/ogg",
+      "video/mp4",
+      "video/webm",
+      "video/quicktime"
+    ];
+
+    const ok = allowed.includes(mime);
+
+    cb(
+      ok ? null : new Error(
+        "Choose a supported image, audio, or video file."
+      ),
+      ok
+    );
   }
 });
 
@@ -112,10 +137,7 @@ router.get("/:userId", protect, async (req, res) => {
       message: "Could not load conversation."
     });
   }
-});
-
-
-router.post("/", protect, async (req, res) => {
+});router.post("/", protect, async (req, res) => {
   const recipientId = String(req.body.recipientId || "");
   const text = String(req.body.text || "").trim();
   if (!text) return res.status(400).json({ message: "Message cannot be empty." });
@@ -140,33 +162,122 @@ router.post("/", protect, async (req, res) => {
 
 
 // Send an audio or video attachment to an accepted connection.
-router.post("/media", protect, mediaUpload.single("media"), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ message: "Choose an audio or video file." });
-    const recipient = await connectedUser(req.user, String(req.body.recipientId || ""));
-    if (!recipient) return res.status(403).json({ message: "Media messages are available to accepted connections only." });
-    if (!process.env.CLOUDINARY_CLOUD_NAME) return res.status(503).json({ message: "Media uploads are not configured." });
-    const mediaType = req.file.mimetype.startsWith("audio/") ? "audio" : "video";
-    const uploaded = await new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_stream({
-        folder: "realpeoplekonect/chat-media",
-        resource_type: "video"
-      }, (error, result) => error ? reject(error) : resolve(result)).end(req.file.buffer);
-    });
-    const message = await Message.create({
-      sender: req.user._id, recipient: recipient._id, text: "",
-      mediaType, mediaUrl: uploaded.secure_url, mediaPublicId: uploaded.public_id
-    });
-    const payload = {
-      _id: message._id, sender: String(message.sender), recipient: String(message.recipient),
-      text: "", mediaType, mediaUrl: message.mediaUrl, createdAt: message.createdAt, readAt: null
-    };
-    req.app.get("io").to(String(recipient._id)).emit("message:new", payload);
-    res.status(201).json({ message: payload });
-  } catch (error) {
-    console.error("Chat media upload error:", error);
-    res.status(500).json({ message: "Could not send media. Please try again." });
+
+// Send an image, audio, or video attachment
+// to an accepted connection.
+router.post(
+  "/media",
+  protect,
+  mediaUpload.single("media"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          message: "Choose an image, audio, or video file."
+        });
+      }
+
+      // Verify accepted connection.
+      const recipient = await connectedUser(
+        req.user,
+        String(req.body.recipientId || "")
+      );
+
+      if (!recipient) {
+        return res.status(403).json({
+          message: "Media messages are available to accepted connections only."
+        });
+      }
+
+      if (!process.env.CLOUDINARY_CLOUD_NAME) {
+        return res.status(503).json({
+          message: "Media uploads are not configured."
+        });
+      }
+
+      const mime = String(req.file.mimetype || "")
+        .split(";")[0]
+        .toLowerCase();
+
+      // Identify media type.
+      let mediaType;
+      let resourceType;
+
+      if (mime.startsWith("image/")) {
+        mediaType = "image";
+        resourceType = "image";
+      } else if (mime.startsWith("audio/")) {
+        mediaType = "audio";
+        resourceType = "video";
+      } else if (mime.startsWith("video/")) {
+        mediaType = "video";
+        resourceType = "video";
+      } else {
+        return res.status(400).json({
+          message: "Unsupported media format."
+        });
+      }
+
+      // Upload to Cloudinary.
+      const uploaded = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: "realpeoplekonect/chat-media",
+            resource_type: resourceType
+          },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result);
+          }
+        );
+
+        stream.end(req.file.buffer);
+      });
+
+      if (!uploaded?.secure_url) {
+        throw new Error("Cloudinary did not return a media URL.");
+      }
+
+      // Save message in MongoDB.
+      const message = await Message.create({
+        sender: req.user._id,
+        recipient: recipient._id,
+        text: "",
+        mediaType,
+        mediaUrl: uploaded.secure_url,
+        mediaPublicId: uploaded.public_id
+      });
+
+      // Prepare real-time message.
+      const payload = {
+        _id: String(message._id),
+        sender: String(message.sender),
+        recipient: String(message.recipient),
+        text: "",
+        mediaType,
+        mediaUrl: message.mediaUrl,
+        mediaPublicId: message.mediaPublicId,
+        createdAt: message.createdAt,
+        readAt: null
+      };
+
+      // Notify recipient immediately.
+      req.app.get("io")
+        .to(String(recipient._id))
+        .emit("message:new", payload);
+
+      return res.status(201).json({
+        message: payload
+      });
+
+    } catch (error) {
+      console.error("Chat media upload error:", error);
+
+      return res.status(500).json({
+        message: "Could not send media. Please try again."
+      });
+    }
   }
-});
+);
 
 module.exports = router;

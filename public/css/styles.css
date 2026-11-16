@@ -1131,17 +1131,38 @@ footer .footer-brand-logo { display: block; width: 170px; height: 58px; object-f
     #chatAttachBtn,
     #recordVoiceBtn {
         flex: 0 0 35px !important;
-        width: 35px !important;
-        min-width: 35px !important;
-        height: 40px !important;
+        width: 25px !important;
+        min-width: 25px !important;
+        height: 30px !important;
         padding: 0 !important;
     }
 
     .chat-composer button[type="submit"] {
         flex: 0 0 auto !important;
         padding: 10px 10px !important;
-        font-size: 13px !important;
+        font-size: 10px !important;
+          
     }
 }
+/* Friendly voice note microphone icon */
+.voice-note-btn {
+    color: #e87524 !important;
+    background: #fff4eb !important;
+    transition: all 0.2s ease;
+}
 
+.voice-note-btn svg {
+    display: block;
+    width: 23px;
+    height: 23px;
+}
+
+.voice-note-btn:hover {
+    background: #ffe4d2 !important;
+    transform: scale(1.05);
+}
+
+.voice-note-btn:active {
+    transform: scale(0.95);
+}
 

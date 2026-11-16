@@ -2040,7 +2040,14 @@ async function uploadChatMedia(file) {
     }
   });
 })();
+// Open image, audio and video file picker
+document.addEventListener("click", function(event) {
+  const attachButton = event.target.closest("#chatAttachBtn");
 
+  if (!attachButton) return;
+
+  document.getElementById("chatMediaInput")?.click();
+});
 document.addEventListener("change",event=>{
   if(event.target.matches("#chatMediaInput")) {
     const file=event.target.files?.[0];if(file)uploadChatMedia(file);event.target.value="";

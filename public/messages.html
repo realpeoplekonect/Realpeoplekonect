@@ -88,18 +88,44 @@
           <div id="activeChat" class="active-chat hidden">
             <header class="chat-header"><img id="chatUserPhoto" src="https://placehold.co/90x90/191919/ff8129?text=L" alt=""><div><strong id="chatUserName">Member</strong><small id="chatUserStatus">Connected on LINKUP</small></div><div class="chat-call-actions"><button type="button" class="call-action-btn" data-call-type="audio" title="Audio call">☎</button><button type="button" class="call-action-btn" data-call-type="video" title="Video call">▣</button></div></header>
             <div id="chatMessages" class="chat-messages" aria-live="polite"></div>
-            <form id="chatForm" class="chat-composer"><input id="chatInput" name="text" maxlength="3000" placeholder="Write a message…" autocomplete="off" required> 
-              <label class="chat-attach-btn" title="Attach image, audio or video">
-  ＋
+
+         
+<form id="chatForm" class="chat-composer">
+  <input
+    id="chatInput"
+    name="text"
+    maxlength="3000"
+    placeholder="Write a message…"
+    autocomplete="off"
+    required
+  >
+
+  <button
+    type="button"
+    id="chatAttachBtn"
+    class="chat-attach-btn"
+    title="Attach image, audio or video"
+    aria-label="Attach image, audio or video"
+  >＋</button>
+
   <input
     id="chatMediaInput"
     type="file"
     accept="image/jpeg,image/png,image/webp,image/gif,audio/webm,audio/mp4,audio/mpeg,audio/ogg,video/mp4,video/webm,video/quicktime"
     hidden
   >
-</label>
-              
-              <button type="button" id="recordVoiceBtn" class="chat-attach-btn" title="Record voice message">🎙</button><button type="submit" class="btn btn-primary">Send ↗</button></form>
+
+  <button
+    type="button"
+    id="recordVoiceBtn"
+    class="chat-attach-btn"
+    title="Record voice message"
+  >🎙</button>
+
+  <button type="submit" class="btn btn-primary">Send ↗</button>
+</form>
+
+        
           </div>
         </section>
       </div>

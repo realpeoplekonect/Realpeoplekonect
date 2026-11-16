@@ -1547,7 +1547,15 @@ document.addEventListener("keydown", function(event) {
 // ==========================================
 // REALPEOPLEKONECT AUDIO / VIDEO CALLING
 // ==========================================
-let rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }] };
+let rtcConfig = {
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" }
+  ],
+  iceCandidatePoolSize: 10,
+  bundlePolicy: "max-bundle",
+  rtcpMuxPolicy: "require"
+};
 
 function callOverlay(show) { $("#callOverlay")?.classList.toggle("hidden", !show); }
 function callStatus(text) { if ($("#callStatus")) $("#callStatus").textContent = text; }
@@ -1565,10 +1573,40 @@ function callPeerConnection() {
     const remote = $("#remoteCallVideo");
     if (remote) { remote.srcObject = event.streams[0]; remote.classList.toggle("audio-call", call.type === "audio"); remote.classList.remove("hidden");remote.play().catch(()=>{}); }
   };
+
   pc.onconnectionstatechange = () => {
-    if (["failed", "disconnected"].includes(pc.connectionState)) callStatus("Connection interrupted. Check your network.");
-    if (pc.connectionState === "connected") callStatus("Connected");
-  };
+  console.log("Call connection state:", pc.connectionState);
+
+  if (pc.connectionState === "connected") {
+    callStatus("Connected");
+  }
+
+  if (pc.connectionState === "connecting") {
+    callStatus("Establishing connection...");
+  }
+
+  if (pc.connectionState === "disconnected") {
+    callStatus("Connection interrupted. Reconnecting...");
+  }
+
+  if (pc.connectionState === "failed") {
+    callStatus("Connection failed. Check your network or TURN settings.");
+    console.error("WebRTC connection failed.");
+  }
+
+  if (pc.connectionState === "closed") {
+    callStatus("Call ended.");
+  }
+};
+
+pc.oniceconnectionstatechange = () => {
+  console.log("ICE connection state:", pc.iceConnectionState);
+};
+
+pc.onicegatheringstatechange = () => {
+  console.log("ICE gathering state:", pc.iceGatheringState);
+};
+
   return pc;
 }
 async function acquireCallMedia(type) {

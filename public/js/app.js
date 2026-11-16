@@ -5,7 +5,7 @@ const $ = s => document.querySelector(s);
 
 const $$ = s => [...document.querySelectorAll(s)];
 // ========================================
-// REALPEOPLEKONECT CONNECTION NOTIFICATIONS
+// PEOKONECT CONNECTION NOTIFICATIONS
 // ========================================
 
 
@@ -40,7 +40,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 
 
 /* ==========================================
-   REALPEOPLEKONECT GLOBAL CONNECTION BADGE
+   PEOKONECT GLOBAL CONNECTION BADGE
 ========================================== */
 
 function setConnectionRequestBadge(count) {
@@ -478,9 +478,11 @@ function connectSocket(){
   if(!state.token)return;
   if(state.socket)state.socket.disconnect();
   state.socket=io({auth:{token:state.token}});
-  state.socket.on("admin:activity",item=>{if($("#page-admin").classList.contains("active"))prependActivity(item);});
+  state.socket.on("admin:activity", item => {if ($("#page-admin")?.classList.contains("active")) {
+    prependActivity(item);
+  }
+});
   state.socket.on("presence:update",item=>{const card=document.querySelector(`[data-user-id="${item.userId}"] .online-dot`);if(card)card.style.display=item.isOnline?"block":"none";});
-
   
 // Receive new messages immediately.
 state.socket.on("message:new", async message => {
@@ -684,7 +686,26 @@ ${p.mediaType === "video" ? `
     alt="Community post"
     loading="lazy">
 `}<div class="post-caption">${escapeHTML(p.caption)}</div>
-    ${isOwner ? `<form class="post-edit-form hidden" data-id="${p._id}"><label>Edit caption<textarea name="caption" maxlength="1000">${escapeHTML(p.caption||"")}</textarea></label><label class="edit-image-label">Replace photo or video (optional)<input type="file" name="image" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"></label><div class="post-edit-actions"><button type="button" class="btn btn-ghost post-edit-cancel">Cancel</button><button type="submit" class="btn btn-primary">Save changes</button></div></form>` : ""}
+    ${isOwner ? `<form class="post-edit-form hidden" data-id="${p._id}"><label>Edit caption<textarea name="caption" maxlength="1000">${escapeHTML(p.caption||"")}</textarea></label>
+    
+  <label class="edit-image-label">
+  Replace photo or video (optional)
+  <input
+    type="file"
+    name="image"
+    accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime">
+</label>
+
+<label class="edit-image-label">
+  Replace video thumbnail (optional)
+  <input
+    type="file"
+    name="thumbnail"
+    accept="image/jpeg,image/png,image/webp">
+</label>
+    
+    
+    <div class="post-edit-actions"><button type="button" class="btn btn-ghost post-edit-cancel">Cancel</button><button type="submit" class="btn btn-primary">Save changes</button></div></form>` : ""}
     <div class="post-actions"><button class="like-btn" data-id="${p._id}">♡ ${p.likes?.length||0} likes</button><span>💬 ${p.comments?.length||0} comments</span></div>
     <div class="comment-list">${comments}</div>
     <form class="comment-form" data-id="${p._id}"><input name="text" maxlength="500" placeholder="Write a kind comment..." required><button>Post</button></form>
@@ -921,7 +942,7 @@ async function loadAdmin(){
     if($("#premiumAdminActive")){$("#premiumAdminActive").textContent=premium.activeMembers;$("#premiumAdminExpired").textContent=premium.expiredMembers;$("#premiumAdminPayments").textContent=premium.payments;$("#premiumAdminRevenue").textContent="₦"+Number(premium.revenue).toLocaleString("en-NG");$("#premiumAdminMembers").innerHTML=premium.members.map(m=>`<div class="admin-user-row"><span><strong>${escapeHTML(m.name)}</strong><br><small>${escapeHTML(m.email)} · ${escapeHTML(m.subscription?.interval||"premium")} · ${m.subscription?.expiryDate?new Date(m.subscription.expiryDate).toLocaleDateString():"No expiry recorded"}</small></span><span class="premium-badge">${escapeHTML(m.subscription?.status||"inactive")}</span></div>`).join("")||"<p class='muted'>No Premium members yet.</p>";}
   }catch(e){toast(e.message);}
 }
-$("#authForm").addEventListener("submit",async e=>{
+$("#authForm")?.addEventListener("submit",async e=>{
   e.preventDefault();const f=e.currentTarget;const body={email:f.elements.email.value,password:f.elements.password.value};
   if(state.mode==="register"){body.name=f.elements.name.value;body.age=Number(f.elements.age.value);}
   try{
@@ -950,18 +971,113 @@ $("#resendVerification")?.addEventListener("click",async()=>{
   catch(err){toast(err.message);}
 });
 
-$("#postForm").addEventListener("submit",async e=>{
-  e.preventDefault();if(!state.token){openAuth("login");return;}
-  const file=$("#postImage").files[0];if(!file){toast("Please choose a photo or video for your post.");return;}
-  const form=new FormData();form.append("image",file);form.append("caption",$("#postCaption").value);
-  try{await api("/posts",{method:"POST",body:form});$("#postForm").reset();$("#fileName").textContent="Photos or videos · max 100MB";toast("Your moment has been shared.");loadFeed();}
-  catch(err){toast(err.message);}
+$("#postForm")?.addEventListener("submit", async e => {
+  e.preventDefault();
+
+  if (!state.token) {
+    openAuth("login");
+    return;
+  }
+
+  const file = $("#postImage").files[0];
+
+  if (!file) {
+    toast("Please choose a photo or video for your post.");
+    return;
+  }
+
+  const form = new FormData();
+  form.append("image", file);
+  form.append("caption", $("#postCaption").value);
+
+  // Attach the optional custom thumbnail.
+  const thumbnail = $("#postThumbnail").files[0];
+
+  if (file.type.startsWith("video/") && thumbnail) {
+    form.append("thumbnail", thumbnail);
+  }
+
+  const submitButton = $("#postForm").querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+  submitButton.textContent = "Sharing...";
+
+  try {
+    await api("/posts", {
+      method: "POST",
+      body: form
+    });
+
+    $("#postForm").reset();
+    $("#fileName").textContent = "Photos or videos · max 100MB";
+    $("#thumbnailFileName").textContent =
+      "No thumbnail selected — we'll choose a video frame automatically.";
+    $("#thumbnailPreview").src = "";
+    $("#thumbnailPreview").classList.add("hidden");
+    $("#thumbnailPicker").classList.add("hidden");
+
+    toast("Your moment has been shared.");
+    await loadFeed();
+
+  } catch (err) {
+    toast(err.message);
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = "Share post ↗";
+  }
 });
-$("#profileForm").addEventListener("submit",async e=>{
+
+// Open the thumbnail file chooser.
+$("#chooseThumbnail")?.addEventListener("click", () => {
+  $("#postThumbnail")?.click();
+});
+
+// Show the thumbnail option only when a video is selected.
+$("#postImage")?.addEventListener("change", e => {
+  const file = e.target.files[0];
+
+  $("#fileName").textContent =
+    file?.name || "Photos or videos · max 100MB";
+
+  const picker = $("#thumbnailPicker");
+
+  if (file && file.type.startsWith("video/")) {
+    picker.classList.remove("hidden");
+  } else {
+    picker.classList.add("hidden");
+    $("#postThumbnail").value = "";
+    $("#thumbnailFileName").textContent =
+      "No thumbnail selected — we'll choose a video frame automatically.";
+    $("#thumbnailPreview").src = "";
+    $("#thumbnailPreview").classList.add("hidden");
+  }
+});
+
+// Preview the custom thumbnail selected by the user.
+$("#postThumbnail")?.addEventListener("change", e => {
+  const file = e.target.files[0];
+
+  if (!file) {
+    $("#thumbnailFileName").textContent =
+      "No thumbnail selected — we'll choose a video frame automatically.";
+    $("#thumbnailPreview").src = "";
+    $("#thumbnailPreview").classList.add("hidden");
+    return;
+  }
+
+  $("#thumbnailFileName").textContent = file.name;
+
+  const preview = $("#thumbnailPreview");
+  preview.src = URL.createObjectURL(file);
+  preview.classList.remove("hidden");
+});
+
+
+
+$("#profileForm")?.addEventListener("submit",async e=>{
   e.preventDefault();const f=e.currentTarget;const body={};["name","age","gender","lookingFor","bio"].forEach(k=>body[k]=f.elements[k].value);body.age=Number(body.age)||undefined;body.interests=f.elements.interests.value.split(",").map(s=>s.trim()).filter(Boolean);
   try{const {user}=await api("/users/profile/me",{method:"PATCH",body:JSON.stringify(body)});state.user=user;localStorage.setItem("linkupUser",JSON.stringify(user));updateAuthUI();$("#profileDisplayName").textContent=user.name;$("#profileDisplayBio").textContent=user.bio||"Add a profile photo and tell people a little about yourself.";toast("Profile updated.");}catch(err){toast(err.message);}
 });
-$("#profilePhotoInput").addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;const form=new FormData();form.append("photo",file);try{
+$("#profilePhotoInput")?.addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;const form=new FormData();form.append("photo",file);try{
   const d=await api("/users/profile/photo",{method:"POST",body:form});
   state.user=d.user;
   localStorage.setItem("linkupUser",JSON.stringify(state.user));
@@ -971,8 +1087,8 @@ $("#profilePhotoInput").addEventListener("change",async e=>{const file=e.target.
   if($("#page-feed")?.classList.contains("active")) await loadFeed();
   toast("Profile photo updated. Your picture is now shown across LINKUP.");
 }catch(err){toast(err.message);}finally{e.target.value="";}});
-$("#galleryFiles").addEventListener("change",e=>{$("#gallerySelection").textContent=e.target.files.length?`${e.target.files.length} photo(s) selected`:"No photos selected";});
-$("#galleryUploadForm").addEventListener("submit", async e => {
+$("#galleryFiles")?.addEventListener("change",e=>{$("#gallerySelection").textContent=e.target.files.length?`${e.target.files.length} photo(s) selected`:"No photos selected";});
+$("#galleryUploadForm")?.addEventListener("submit", async e => {
     e.preventDefault();
 
     const files = [...$("#galleryFiles").files];
@@ -1204,7 +1320,19 @@ document.addEventListener("submit",async e=>{
     e.preventDefault();
     const form=e.target;const payload=new FormData();
     payload.append("caption",form.elements.caption.value);
-    const image=form.elements.image.files[0];if(image)payload.append("image",image);
+
+
+  const image = form.elements.image.files[0];
+if (image) {
+  payload.append("image", image);
+}
+
+const thumbnail = form.elements.thumbnail.files[0];
+if (thumbnail) {
+  payload.append("thumbnail", thumbnail);
+}
+
+
     const saveButton=form.querySelector('button[type="submit"]');saveButton.disabled=true;saveButton.textContent="Saving...";
     try{await api(`/posts/${form.dataset.id}`,{method:"PATCH",body:payload});toast("Your post has been updated.");await loadFeed();}
     catch(err){toast(err.message);saveButton.disabled=false;saveButton.textContent="Save changes";}
@@ -1311,12 +1439,11 @@ if (e.target.matches("#resetPasswordForm")) {
   if(e.target.matches(".gallery-comment-form")){e.preventDefault();const input=e.target.elements.text;try{await api(`/users/gallery/${e.target.dataset.id}/comments`,{method:"POST",body:JSON.stringify({text:input.value})});const id=$("#publicProfileContent .connect-btn")?.dataset.id;if(id)await openPublicProfile(id);}catch(err){toast(err.message);}}
   if(e.target.matches(".comment-form")){e.preventDefault();const input=e.target.elements.text;try{await api(`/posts/${e.target.dataset.id}/comments`,{method:"POST",body:JSON.stringify({text:input.value})});loadFeed();}catch(err){toast(err.message);}}
 });
-$("#postImage").addEventListener("change",e=>$("#fileName").textContent=e.target.files[0]?.name||"Photos or videos · max 100MB");
+
 $("#switchMode")?.addEventListener("click",()=>openAuth("login"));
-$("#year").textContent=new Date().getFullYear();
-
-
-
+if ($("#year")) {
+  $("#year").textContent = new Date().getFullYear();
+}
 updateAuthUI();
 
 const initialPage =
@@ -1378,14 +1505,14 @@ async function loadPremium() {
     const yearly = plans.plans.find(p => p.id === "yearly");
     area.innerHTML = `
       <section class="premium-hero">
-        <span class="premium-kicker">♛ THE REALPEOPLEKONECT EXPERIENCE</span>
-        <h1>REALPEOPLEKONECT <em>Premium</em></h1>
+        <span class="premium-kicker">♛ THE PEOKONECT EXPERIENCE</span>
+        <h1>PEOKONECT <em>Premium</em></h1>
         <p>More visibility. Deeper insights. More meaningful connections.</p>
       </section>
       ${active ? `<div class="premium-status"><strong>♛ Your Premium membership is active</strong><span>Renews/ends: ${sub.subscription.expiryDate ? new Date(sub.subscription.expiryDate).toLocaleDateString() : "Managed by Flutterwave"}</span><button id="cancelPremium" class="btn btn-outline" ${sub.subscription.cancelAtPeriodEnd?"disabled":""}>${sub.subscription.cancelAtPeriodEnd?"Auto-renewal cancelled":"Cancel automatic renewal"}</button></div>` : ""}
       <div class="premium-pricing">
         <article class="premium-plan free-plan"><span class="plan-symbol">○</span><h2>Free Membership</h2><p>Enjoy the essentials and get started.</p><div class="plan-price">₦0 <small>/ forever</small></div><div class="current-plan">${state.token && !active ? "Your current plan" : "Available to everyone"}</div><ul>${["Create your account and profile","Browse community posts","Like and comment on posts","Connect with other users","Send and receive messages","Upload profile and gallery photos"].map(x=>`<li>✓ ${x}</li>`).join("")}</ul></article>
-        <article class="premium-plan gold-plan"><span class="popular-label">BEST EXPERIENCE</span><span class="plan-symbol">♛</span><h2>Premium Membership</h2><p>Unlock the complete REALPEOPLEKONECT experience.</p><div class="billing-choice"><button class="billing-option selected" data-plan="monthly">Monthly</button><button class="billing-option" data-plan="yearly">Yearly <small>Save 20%</small></button></div><div class="plan-price" id="premiumPrice">₦${monthly.amount.toLocaleString("en-NG")} <small>/ month</small></div><p class="billing-note" id="premiumBillingNote">Billed monthly. Automatic renewal; cancel anytime.</p><button class="btn premium-cta" id="subscribePremium" ${active?"disabled":""}>${active?"You are a Premium member":"♛ Upgrade to Premium"}</button><ul>${PREMIUM_FEATURES.map(x=>`<li><b>✓</b> ${x}</li>`).join("")}</ul><small class="secure-note">Secure recurring card payments powered by Flutterwave.</small></article>
+        <article class="premium-plan gold-plan"><span class="popular-label">BEST EXPERIENCE</span><span class="plan-symbol">♛</span><h2>Premium Membership</h2><p>Unlock the complete PEOKONECT experience.</p><div class="billing-choice"><button class="billing-option selected" data-plan="monthly">Monthly</button><button class="billing-option" data-plan="yearly">Yearly <small>Save 20%</small></button></div><div class="plan-price" id="premiumPrice">₦${monthly.amount.toLocaleString("en-NG")} <small>/ month</small></div><p class="billing-note" id="premiumBillingNote">Billed monthly. Automatic renewal; cancel anytime.</p><button class="btn premium-cta" id="subscribePremium" ${active?"disabled":""}>${active?"You are a Premium member":"♛ Upgrade to Premium"}</button><ul>${PREMIUM_FEATURES.map(x=>`<li><b>✓</b> ${x}</li>`).join("")}</ul><small class="secure-note">Secure recurring card payments powered by Flutterwave.</small></article>
       </div>
       <section class="premium-tools"><h2>Your Premium benefits</h2><div class="premium-tool-grid"><button class="premium-tool" data-premium-tool="viewers">👁 <strong>Profile viewers</strong><span>See who visited your profile</span></button><button class="premium-tool" data-premium-tool="likes">♡ <strong>Profile likes</strong><span>See who liked your profile</span></button></div><div id="premiumResults"></div></section>
       <p class="premium-terms">Yearly plan: ₦17,856 per year (20% less than 12 monthly payments). Recurring subscriptions are charged to the card used at checkout through the Flutterwave payment plan. Access remains active for the paid period. You can cancel future renewal; refunds are subject to LINKUP's refund policy.</p>`;
@@ -1588,7 +1715,7 @@ document.addEventListener("keydown", function(event) {
 });
 
 // ==========================================
-// REALPEOPLEKONECT AUDIO / VIDEO CALLING
+// PEOKONECT AUDIO / VIDEO CALLING
 // ==========================================
 let rtcConfig = {
   iceServers: [
@@ -1892,7 +2019,7 @@ function setupCallSocketEvents() {
   if(!state.socket)return;
   state.socket.on("call:incoming", data => {
     if(state.call){state.socket.emit("call:reject",{callId:data.callId});return;}
-    state.call={id:data.callId,peerId:String(data.callerId),peerName:data.callerName||"REALPEOPLEKONECT member",type:data.mediaType,initiator:false,localStream:null,pc:null,pendingIce:[]};
+    state.call={id:data.callId,peerId:String(data.callerId),peerName:data.callerName||"PEOKONECT member",type:data.mediaType,initiator:false,localStream:null,pc:null,pendingIce:[]};
     $("#callTitle").textContent=`Incoming ${data.mediaType} call`;
     $("#callAvatar").textContent=(state.call.peerName[0]||"R").toUpperCase();
     $("#localCallVideo").classList.add("hidden");$("#remoteCallVideo").classList.add("hidden");
@@ -2223,22 +2350,7 @@ function setupPostVideoControls() {
 }
 
 // Handle clicks on the centre play button.
-document.addEventListener("click", async event => {
-  const button = event.target.closest(".post-video-play");
 
-  if (!button) return;
-
-  const wrapper = button.closest(".post-video-wrap");
-  const video = wrapper?.querySelector("video");
-
-  if (!video) return;
-
-  try {
-    await video.play();
-  } catch (error) {
-    toast("Unable to play this video. Please try again.");
-  }
-});
 
 function setupFeedVideos() {
   const videos = document.querySelectorAll(

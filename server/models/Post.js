@@ -6,6 +6,8 @@ const postSchema = new mongoose.Schema({
   mediaType: { type: String, enum: ["image", "video"], default: "image" },
   mediaUrl: { type: String, default: "" },
   mediaPoster: { type: String, default: "" },
+
+mediaPosterPublicId: { type: String, default: "" },
   mediaPublicId: String,
   caption: { type: String, maxlength: 1000, default: "" },
   likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],

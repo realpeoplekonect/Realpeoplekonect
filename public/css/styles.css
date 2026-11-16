@@ -1238,3 +1238,30 @@ footer .footer-brand-logo { display: block; width: 170px; height: 58px; object-f
 .chat-call-actions .modern-call-btn:hover {
   transform: scale(1.08);
 }
+.thumbnail-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  margin-top: 12px;
+  border: 1px solid rgba(255, 129, 41, 0.25);
+  border-radius: 12px;
+  background: rgba(255, 129, 41, 0.05);
+}
+
+.thumbnail-picker label {
+  width: 100%;
+  font-weight: 700;
+}
+
+#thumbnailPreview {
+  width: 130px;
+  height: 85px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.thumbnail-picker .muted {
+  font-size: 12px;
+}

@@ -72,7 +72,7 @@ function optimizedVideoUrl(publicId) {
 }
 
 // Generate video thumbnail.
-function videoPosterUrl(publicId) {
+function videoPosterUrl(publicId, offset = 0) {
   return cloudinary.url(publicId, {
     resource_type: "video",
     secure: true,
@@ -83,7 +83,7 @@ function videoPosterUrl(publicId) {
         height: 600,
         crop: "limit",
         quality: "auto",
-        start_offset: "0"
+        start_offset: String(offset)
       }
     ]
   });
@@ -112,79 +112,122 @@ router.get("/", protect, async (req, res) => {
 });
 
 // CREATE A NEW POST.
-router.post("/", protect, upload.single("image"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
-        message: "Choose a photo or video to share."
+router.post(
+  "/",
+  protect,
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "thumbnail", maxCount: 1 }
+  ]),
+  async (req, res) => {
+    try {
+      const mediaFile = req.files?.image?.[0];
+      const thumbnailFile = req.files?.thumbnail?.[0];
+
+      if (!mediaFile) {
+        return res.status(400).json({
+          message: "Choose a photo or video to share."
+        });
+      }
+
+      if (!process.env.CLOUDINARY_CLOUD_NAME) {
+        return res.status(503).json({
+          message: "Media uploads are not configured. Add Cloudinary credentials."
+        });
+      }
+
+      const mediaType = mediaFile.mimetype.startsWith("video/")
+        ? "video"
+        : "image";
+
+      const media = await uploadPostMedia(
+        mediaFile.buffer,
+        mediaType === "video"
+      );
+
+      const mediaUrl = mediaType === "video"
+        ? optimizedVideoUrl(media.public_id)
+        : media.secure_url;
+
+      let mediaPoster = "";
+      let mediaPosterPublicId = "";
+
+      if (mediaType === "video") {
+        if (thumbnailFile) {
+          // Use the custom thumbnail selected by the user.
+          const poster = await uploadPostMedia(
+            thumbnailFile.buffer,
+            false
+          );
+
+          mediaPoster = poster.secure_url;
+          mediaPosterPublicId = poster.public_id;
+
+        } else {
+          // Automatically select a random frame from the video.
+          const duration = Number(media.duration) || 1;
+          const randomOffset = Math.max(
+            0,
+            Math.random() * duration * 0.85
+          );
+
+          mediaPoster = videoPosterUrl(
+            media.public_id,
+            randomOffset
+          );
+        }
+      }
+
+      const post = await Post.create({
+        author: req.user._id,
+        image: mediaType === "image" ? media.secure_url : "",
+        imagePublicId: mediaType === "image" ? media.public_id : "",
+        mediaType,
+        mediaUrl,
+        mediaPoster,
+        mediaPosterPublicId,
+        mediaPublicId: media.public_id,
+        caption: req.body.caption || ""
+      });
+
+      await Activity.create({
+        user: req.user._id,
+        type: "post",
+        detail: `Published a community ${mediaType} post`
+      });
+
+      const populated = await post.populate("author", "name photo");
+
+      req.app.get("io").to("admins").emit("admin:activity", {
+        type: "post",
+        detail: `${req.user.name} published a ${mediaType} post`,
+        createdAt: new Date()
+      });
+
+      res.status(201).json({
+        post: populated
+      });
+
+    } catch (err) {
+      console.error("POST MEDIA UPLOAD ERROR:", err);
+
+      res.status(500).json({
+        message: "Could not publish post.",
+        error: err.message
       });
     }
-
-    if (!process.env.CLOUDINARY_CLOUD_NAME) {
-      return res.status(503).json({
-        message: "Media uploads are not configured. Add Cloudinary credentials."
-      });
-    }
-
-    const mediaType = req.file.mimetype.startsWith("video/")
-      ? "video"
-      : "image";
-
-    const media = await uploadPostMedia(
-      req.file.buffer,
-      mediaType === "video"
-    );
-
-    const mediaUrl = mediaType === "video"
-      ? optimizedVideoUrl(media.public_id)
-      : media.secure_url;
-
-    const mediaPoster = mediaType === "video"
-      ? videoPosterUrl(media.public_id)
-      : "";
-
-    // Create post ONCE.
-    const post = await Post.create({
-      author: req.user._id,
-      image: mediaType === "image" ? media.secure_url : "",
-      imagePublicId: mediaType === "image" ? media.public_id : "",
-      mediaType,
-      mediaUrl,
-      mediaPoster,
-      mediaPublicId: media.public_id,
-      caption: req.body.caption || ""
-    });
-
-    await Activity.create({
-      user: req.user._id,
-      type: "post",
-      detail: `Published a community ${mediaType} post`
-    });
-
-    const populated = await post.populate("author", "name photo");
-
-    req.app.get("io").to("admins").emit("admin:activity", {
-      type: "post",
-      detail: `${req.user.name} published a ${mediaType} post`,
-      createdAt: new Date()
-    });
-
-    res.status(201).json({
-      post: populated
-    });
-
-  } catch (err) {
-    console.error("POST MEDIA UPLOAD ERROR:", err);
-
-    res.status(500).json({
-      message: "Could not publish post.",
-      error: err.message
-    });
   }
-});
+);
 
 // EDIT A POST.
-router.patch("/:id", protect, upload.single("image"), async (req, res) => {
+router.patch(
+  "/:id",
+  protect,
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "thumbnail", maxCount: 1 }
+  ]),
+  async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
 
@@ -204,62 +247,92 @@ router.patch("/:id", protect, upload.single("image"), async (req, res) => {
       post.caption = req.body.caption.trim();
     }
 
-    if (req.file) {
-      if (!process.env.CLOUDINARY_CLOUD_NAME) {
-        return res.status(503).json({
-          message: "Media uploads are not configured."
-        });
-      }
+    const mediaFile = req.files?.image?.[0];
+const thumbnailFile = req.files?.thumbnail?.[0];
 
-      const mediaType = req.file.mimetype.startsWith("video/")
-        ? "video"
-        : "image";
+if (mediaFile) {
+  if (!process.env.CLOUDINARY_CLOUD_NAME) {
+    return res.status(503).json({
+      message: "Media uploads are not configured."
+    });
+  }
 
-      const media = await uploadPostMedia(
-        req.file.buffer,
-        mediaType === "video"
-      );
+  const mediaType = mediaFile.mimetype.startsWith("video/")
+    ? "video"
+    : "image";
 
-      const oldPublicId = post.mediaPublicId || post.imagePublicId;
+  const media = await uploadPostMedia(
+    mediaFile.buffer,
+    mediaType === "video"
+  );
 
-      const oldResourceType = post.mediaType === "video"
-        ? "video"
-        : "image";
+  const oldPublicId = post.mediaPublicId || post.imagePublicId;
+  const oldResourceType = post.mediaType === "video" ? "video" : "image";
+  const oldPosterPublicId = post.mediaPosterPublicId;
 
-      post.mediaType = mediaType;
+  post.mediaType = mediaType;
+  post.mediaUrl = mediaType === "video"
+    ? optimizedVideoUrl(media.public_id)
+    : media.secure_url;
 
-      post.mediaUrl = mediaType === "video"
-        ? optimizedVideoUrl(media.public_id)
-        : media.secure_url;
+  post.mediaPublicId = media.public_id;
+  post.image = mediaType === "image" ? media.secure_url : "";
+  post.imagePublicId = mediaType === "image" ? media.public_id : "";
 
-      post.mediaPoster = mediaType === "video"
-        ? videoPosterUrl(media.public_id)
-        : "";
+  if (mediaType === "video") {
+    if (thumbnailFile) {
+      const poster = await uploadPostMedia(thumbnailFile.buffer, false);
+      post.mediaPoster = poster.secure_url;
+      post.mediaPosterPublicId = poster.public_id;
+    } else {
+      const duration = Number(media.duration) || 1;
+      const randomOffset = Math.max(0, Math.random() * duration * 0.85);
 
-      post.mediaPublicId = media.public_id;
-
-      post.image = mediaType === "image"
-        ? media.secure_url
-        : "";
-
-      post.imagePublicId = mediaType === "image"
-        ? media.public_id
-        : "";
-
-      // Remove old media from Cloudinary.
-      if (oldPublicId) {
-        try {
-          await cloudinary.uploader.destroy(oldPublicId, {
-            resource_type: oldResourceType
-          });
-        } catch (cleanupError) {
-          console.error(
-            "OLD POST MEDIA CLEANUP ERROR:",
-            cleanupError.message
-          );
-        }
-      }
+      post.mediaPoster = videoPosterUrl(media.public_id, randomOffset);
+      post.mediaPosterPublicId = "";
     }
+  } else {
+    post.mediaPoster = "";
+    post.mediaPosterPublicId = "";
+  }
+
+  if (oldPublicId) {
+    try {
+      await cloudinary.uploader.destroy(oldPublicId, {
+        resource_type: oldResourceType
+      });
+    } catch (cleanupError) {
+      console.error("OLD POST MEDIA CLEANUP ERROR:", cleanupError.message);
+    }
+  }
+
+  if (oldPosterPublicId) {
+    try {
+      await cloudinary.uploader.destroy(oldPosterPublicId, {
+        resource_type: "image"
+      });
+    } catch (cleanupError) {
+      console.error("OLD POST THUMBNAIL CLEANUP ERROR:", cleanupError.message);
+    }
+  }
+} else if (thumbnailFile && post.mediaType === "video") {
+  // Change only the thumbnail without replacing the video.
+  const poster = await uploadPostMedia(thumbnailFile.buffer, false);
+  const oldPosterPublicId = post.mediaPosterPublicId;
+
+  post.mediaPoster = poster.secure_url;
+  post.mediaPosterPublicId = poster.public_id;
+
+  if (oldPosterPublicId) {
+    try {
+      await cloudinary.uploader.destroy(oldPosterPublicId, {
+        resource_type: "image"
+      });
+    } catch (cleanupError) {
+      console.error("OLD POST THUMBNAIL CLEANUP ERROR:", cleanupError.message);
+    }
+  }
+}
 
     await post.save();
 
@@ -302,6 +375,7 @@ router.delete("/:id", protect, async (req, res) => {
     }
 
     const publicId = post.mediaPublicId || post.imagePublicId;
+    const posterPublicId = post.mediaPosterPublicId;
 
     if (publicId) {
       try {
@@ -315,6 +389,18 @@ router.delete("/:id", protect, async (req, res) => {
         );
       }
     }
+    if (posterPublicId) {
+  try {
+    await cloudinary.uploader.destroy(posterPublicId, {
+      resource_type: "image"
+    });
+  } catch (cleanupError) {
+    console.error(
+      "POST THUMBNAIL CLEANUP ERROR:",
+      cleanupError.message
+    );
+  }
+}
 
     await post.deleteOne();
 

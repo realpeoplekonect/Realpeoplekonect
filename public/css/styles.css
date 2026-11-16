@@ -1111,3 +1111,37 @@ footer .footer-brand-logo { display: block; width: 170px; height: 58px; object-f
 }
 
 
+/* Make message input longer on mobile */
+@media (max-width: 600px) {
+    .chat-composer {
+        display: flex !important;
+        gap: 5px !important;
+        padding: 10px 7px !important;
+        align-items: center !important;
+    }
+
+    .chat-composer #chatInput {
+        flex: 1 1 0 !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        padding: 12px 10px !important;
+        font-size: 14px !important;
+    }
+
+    #chatAttachBtn,
+    #recordVoiceBtn {
+        flex: 0 0 35px !important;
+        width: 35px !important;
+        min-width: 35px !important;
+        height: 40px !important;
+        padding: 0 !important;
+    }
+
+    .chat-composer button[type="submit"] {
+        flex: 0 0 auto !important;
+        padding: 10px 10px !important;
+        font-size: 13px !important;
+    }
+}
+
+

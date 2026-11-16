@@ -1,6 +1,6 @@
-# LINKUP — Social & Dating Platform
+# PEOKONECT — Social & Dating Platform
 
-LINKUP is a Node.js, Express, MongoDB, Cloudinary and Socket.IO starter application. The frontend uses plain HTML, CSS and JavaScript.
+PEOKONECT is a Node.js, Express, MongoDB, Cloudinary and Socket.IO starter application. The frontend uses plain HTML, CSS and JavaScript.
 
 ## Included
 - Public registration and login (18+ age gate)

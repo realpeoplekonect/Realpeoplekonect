@@ -36,14 +36,14 @@ async function sendPasswordResetEmail(user, resetUrl) {
     });
 
     await transporter.sendMail({
-        from: `LINKUP <${process.env.EMAIL_FROM || smtpUser}>`,
+        from: `PEOKONECT <${process.env.EMAIL_FROM || smtpUser}>`,
         to: user.email,
-        subject: "Reset your LINKUP password",
+        subject: "Reset your PEOKONECT password",
 
         text: `
 Hello ${user.name},
 
-We received a request to reset your LINKUP password.
+We received a request to reset your PEOKONECT password.
 
 Click the link below to create a new password:
 
@@ -61,7 +61,7 @@ If you did not request this, ignore this email.
                     padding:30px;
                     color:#222;">
 
-            <h2>Reset your LINKUP password</h2>
+            <h2>Reset your PEOKONECT password</h2>
 
             <p>Hello ${String(user.name || "there").replace(/[&<>"']/g, c => ({
                 "&": "&amp;",
@@ -72,7 +72,7 @@ If you did not request this, ignore this email.
             }[c]))},</p>
 
             <p>
-                We received a request to reset your LINKUP password.
+                We received a request to reset your PEOKONECT password.
                 Click the button below to create a new password.
             </p>
 
@@ -94,7 +94,7 @@ If you did not request this, ignore this email.
                 you can safely ignore this email.
             </p>
 
-            <p>LINKUP Team</p>
+            <p>PEOKONECT Team</p>
         </div>
         `
     });
@@ -263,11 +263,11 @@ async function sendVerificationEmail(user, rawToken) {
   const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${encodeURIComponent(rawToken)}`;
   const from = process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.EMAIL_USER;
   await mailTransport().sendMail({
-    from: from ? `LINKUP <${from}>` : undefined,
+    from: from ? `PEOKONECT <${from}>` : undefined,
     to: user.email,
-    subject: "Confirm your LINKUP email address",
-    text: `Hello ${user.name},\n\nWelcome to LINKUP. Confirm your email address by opening this link:\n${verifyUrl}\n\nThis link expires in 24 hours. If you did not create this account, you can ignore this email.`,
-    html: `<!doctype html><html><body style="margin:0;background:#f7f7f7;font-family:Arial,sans-serif;color:#222"><div style="max-width:560px;margin:35px auto;background:#fff;padding:32px;border-radius:14px"><h1 style="margin:0 0 8px;color:#ff8129">Welcome to LINKUP</h1><p>Hello ${escapeHtml(user.name)},</p><p>Thanks for creating a LINKUP account. Please confirm that this email address belongs to you by clicking below.</p><p style="margin:28px 0"><a href="${verifyUrl}" style="background:#ff8129;color:#17120e;text-decoration:none;padding:14px 22px;border-radius:8px;font-weight:bold">Confirm my email</a></p><p style="color:#777;font-size:13px">This link expires in 24 hours. If the button does not work, copy this link into your browser:<br><a href="${verifyUrl}">${verifyUrl}</a></p><p style="color:#777;font-size:13px">If you did not create this account, you can ignore this email.</p></div></body></html>`
+    subject: "Confirm your PEOKONECT email address",
+    text: `Hello ${user.name},\n\nWelcome to PEOKONECT. Confirm your email address by opening this link:\n${verifyUrl}\n\nThis link expires in 24 hours. If you did not create this account, you can ignore this email.`,
+    html: `<!doctype html><html><body style="margin:0;background:#f7f7f7;font-family:Arial,sans-serif;color:#222"><div style="max-width:560px;margin:35px auto;background:#fff;padding:32px;border-radius:14px"><h1 style="margin:0 0 8px;color:#ff8129">Welcome to PEOKONECT</h1><p>Hello ${escapeHtml(user.name)},</p><p>Thanks for creating a PEOKONECT account. Please confirm that this email address belongs to you by clicking below.</p><p style="margin:28px 0"><a href="${verifyUrl}" style="background:#ff8129;color:#17120e;text-decoration:none;padding:14px 22px;border-radius:8px;font-weight:bold">Confirm my email</a></p><p style="color:#777;font-size:13px">This link expires in 24 hours. If the button does not work, copy this link into your browser:<br><a href="${verifyUrl}">${verifyUrl}</a></p><p style="color:#777;font-size:13px">If you did not create this account, you can ignore this email.</p></div></body></html>`
   });
 }
 function escapeHtml(value) { return String(value || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -281,7 +281,7 @@ router.post("/register", async (req, res) => {
     const { name, password, age } = req.body;
     const email = String(req.body.email || "").trim().toLowerCase();
     if (!name || !email || !password) return res.status(400).json({ message: "Name, email and password are required." });
-    if (Number(age) < 18) return res.status(400).json({ message: "LINKUP is for adults aged 18 and above." });
+    if (Number(age) < 18) return res.status(400).json({ message: "PEOKONECT is for adults aged 18 and above." });
     if (password.length < 8) return res.status(400).json({ message: "Password must be at least 8 characters." });
     if (await User.findOne({ email })) return res.status(409).json({ message: "An account with this email already exists." });
 
@@ -296,20 +296,20 @@ router.post("/register", async (req, res) => {
       await sendVerificationEmail(user, verification.raw);
     } catch (mailError) {
       await User.deleteOne({ _id: user._id });
-      console.error("LINKUP verification email failed:", mailError.message);
+      console.error("PEOKONECT verification email failed:", mailError.message);
       return res.status(503).json({ message: "Your account could not be completed because the confirmation email could not be sent. Please check the email configuration and try again." });
     }
-    await Activity.create({ user: user._id, type: "register", detail: "Created a LINKUP account; email confirmation sent" });
+    await Activity.create({ user: user._id, type: "register", detail: "Created a PEOKONECT account; email confirmation sent" });
     req.app.get("io").to("admins").emit("admin:activity", { type: "register", detail: `${user.name} registered`, createdAt: new Date() });
     res.status(201).json({ message: "Account created. Check your email and click the confirmation link before logging in.", email: user.email, requiresEmailVerification: true });
   } catch (err) { res.status(500).json({ message: "Could not create account.", error: err.message }); }
 });
 
 router.get("/verify-email", async (req, res) => {
-  const page = (heading, message, ok=false) => res.status(ok ? 200 : 400).type("html").send(`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>${heading} | LINKUP</title></head><body style="margin:0;background:#f7f7f7;font-family:Arial,sans-serif;display:grid;place-items:center;min-height:100vh;padding:20px;box-sizing:border-box"><main style="background:white;max-width:480px;padding:35px;border-radius:16px;text-align:center;box-shadow:0 10px 40px #0001"><h1 style="color:${ok?'#21845a':'#d85d0a'}">${heading}</h1><p style="line-height:1.6;color:#555">${message}</p><a href="/" style="display:inline-block;margin-top:15px;padding:13px 22px;background:#ff8129;color:#17120e;text-decoration:none;border-radius:8px;font-weight:bold">Open LINKUP</a></main></body></html>`);
+  const page = (heading, message, ok=false) => res.status(ok ? 200 : 400).type("html").send(`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>${heading} | PEOKONECT</title></head><body style="margin:0;background:#f7f7f7;font-family:Arial,sans-serif;display:grid;place-items:center;min-height:100vh;padding:20px;box-sizing:border-box"><main style="background:white;max-width:480px;padding:35px;border-radius:16px;text-align:center;box-shadow:0 10px 40px #0001"><h1 style="color:${ok?'#21845a':'#d85d0a'}">${heading}</h1><p style="line-height:1.6;color:#555">${message}</p><a href="/" style="display:inline-block;margin-top:15px;padding:13px 22px;background:#ff8129;color:#17120e;text-decoration:none;border-radius:8px;font-weight:bold">Open PEOKONECT</a></main></body></html>`);
   try {
     const raw = String(req.query.token || "");
-    if (!/^[a-f0-9]{64}$/i.test(raw)) return page("Invalid confirmation link", "This email confirmation link is invalid. Request a new confirmation email from LINKUP.");
+    if (!/^[a-f0-9]{64}$/i.test(raw)) return page("Invalid confirmation link", "This email confirmation link is invalid. Request a new confirmation email from PEOKONECT.");
     const hash = crypto.createHash("sha256").update(raw).digest("hex");
     const user = await User.findOne({ emailVerificationTokenHash: hash, emailVerificationExpires: { $gt: new Date() } }).select("+emailVerificationTokenHash +emailVerificationExpires");
     if (!user) return page("Link expired or already used", "This confirmation link is no longer valid. Please request a new confirmation email.");
@@ -333,7 +333,7 @@ try {
     "Could not record email verification activity:",
     activityError.message
   );
-} return page("Email confirmed!", "Your LINKUP email address has been verified. You can now log in to your account.", true);
+} return page("Email confirmed!", "Your PEOKONECT email address has been verified. You can now log in to your account.", true);
   } catch (err) {
     console.error("Email verification error:", err.message);
     return page("Could not confirm email", "Something went wrong. Please try again or request a new confirmation email.");

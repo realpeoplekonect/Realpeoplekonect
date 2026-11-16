@@ -1,6 +1,6 @@
-# LINKUP Premium implementation
+# PEOKONECT Premium implementation
 
-This ZIP is based on the supplied LINKUP project. The app in this ZIP is a static HTML/CSS/JavaScript frontend served by Express, not React. Premium has been integrated into that existing architecture without replacing the other pages.
+This ZIP is based on the supplied PEOKONECT project. The app in this ZIP is a static HTML/CSS/JavaScript frontend served by Express, not React. Premium has been integrated into that existing architecture without replacing the other pages.
 
 ## Plans
 - Monthly: NGN 1,860, billed monthly.
@@ -9,16 +9,16 @@ This ZIP is based on the supplied LINKUP project. The app in this ZIP is a stati
 
 ## Flutterwave setup (required before live checkout)
 Flutterwave recurring billing uses Payment Plans. Create two plans in the same Flutterwave environment as your secret key:
-1. `LINKUP Premium Monthly`: amount `1860`, currency `NGN`, interval `monthly`, duration left empty/indefinite.
-2. `LINKUP Premium Yearly`: amount `17856`, currency `NGN`, interval `yearly`, duration left empty/indefinite.
+1. `PEOKONECT Premium Monthly`: amount `1860`, currency `NGN`, interval `monthly`, duration left empty/indefinite.
+2. `PEOKONECT Premium Yearly`: amount `17856`, currency `NGN`, interval `yearly`, duration left empty/indefinite.
 
 You can create them in the Flutterwave dashboard under Payment Plans, or with `POST https://api.flutterwave.com/v3/payment-plans` using:
 ```json
-{"amount":1860,"name":"LINKUP Premium Monthly","interval":"monthly","currency":"NGN"}
+{"amount":1860,"name":"PEOKONECT Premium Monthly","interval":"monthly","currency":"NGN"}
 ```
 and:
 ```json
-{"amount":17856,"name":"LINKUP Premium Yearly","interval":"yearly","currency":"NGN"}
+{"amount":17856,"name":"PEOKONECT Premium Yearly","interval":"yearly","currency":"NGN"}
 ```
 Copy each returned `data.id`. Put them in the server environment as `FLW_PREMIUM_MONTHLY_PLAN_ID` and `FLW_PREMIUM_YEARLY_PLAN_ID`.
 
@@ -27,7 +27,7 @@ Set these server environment variables (see `.env.premium.example`):
 - `FLW_WEBHOOK_SECRET`: a strong random webhook hash. Set the exact same value in Flutterwave Dashboard > Settings > Webhooks.
 - `FLW_PREMIUM_MONTHLY_PLAN_ID`
 - `FLW_PREMIUM_YEARLY_PLAN_ID`
-- `CLIENT_URL`: public HTTPS origin of the LINKUP website, no trailing slash.
+- `CLIENT_URL`: public HTTPS origin of the PEOKONECT website, no trailing slash.
 - Keep existing `MONGODB_URI`, `JWT_SECRET`, Cloudinary and other settings.
 
 Configure this webhook URL in Flutterwave:
@@ -50,7 +50,7 @@ Enable charge completed and subscription cancelled events. The webhook checks th
 - Checkout sends the Flutterwave `payment_plan` ID and only allows card payments because Flutterwave payment-plan subscriptions are card-only.
 - Returning from checkout does not itself grant Premium. The backend verifies the transaction ID, reference, status, currency and amount.
 - Webhooks independently verify charges and are safe against duplicate transaction notifications.
-- Flutterwave handles future recurring charges and retries; webhook notifications update the LINKUP membership record.
+- Flutterwave handles future recurring charges and retries; webhook notifications update the PEOKONECT membership record.
 - Cancellation stops future recurring billing through Flutterwave; the user keeps Premium until the already-paid period ends.
 - Free members can send up to 5 connection requests per day; Premium removes that limit.
 - Advanced discovery search is server-gated to Premium.

@@ -288,7 +288,7 @@ router.post(
 
       const result = await uploadImage(
         req.file.buffer,
-        "linkup/profile-photos"
+        "peokonect/profile-photos"
       );
 
       const oldPhotoPublicId = req.user.photoPublicId;
@@ -343,7 +343,7 @@ router.post(
       // Upload all selected images.
       const results = await Promise.allSettled(
         req.files.map(file =>
-          uploadImage(file.buffer, "linkup/profile-gallery")
+          uploadImage(file.buffer, "peokonect/profile-gallery")
         )
       );
 

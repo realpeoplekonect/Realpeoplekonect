@@ -1,5 +1,5 @@
 const API = "/api";
-const state = { token: localStorage.getItem("linkupToken"), user: JSON.parse(localStorage.getItem("linkupUser") || "null"), mode: "register", socket: null, users: [], activeConversation: null, call: null, voiceRecorder: null, voiceStream: null };
+const state = { token: localStorage.getItem("peokonectToken"), user: JSON.parse(localStorage.getItem("peokonectUser") || "null"), mode: "register", socket: null, users: [], activeConversation: null, call: null, voiceRecorder: null, voiceStream: null };
 const $ = s => document.querySelector(s);
 
 
@@ -7,36 +7,6 @@ const $$ = s => [...document.querySelectorAll(s)];
 // ========================================
 // PEOKONECT CONNECTION NOTIFICATIONS
 // ========================================
-
-
-// function setConnectionRequestBadge(count) {
-//   const total = Math.max(0, Number(count) || 0);
-
-//   // Find the Connections navigation item on the current page
-//   const buttons = document.querySelectorAll(
-//     '[data-page="connections"], [data-nav="connections"]'
-//   );
-
-//   buttons.forEach(button => {
-//     let badge = button.querySelector(".notification-badge");
-
-//     if (!badge) {
-//       badge = document.createElement("span");
-//       badge.className = "notification-badge hidden";
-//       badge.setAttribute("aria-live", "polite");
-//       button.appendChild(badge);
-//     }
-
-//     badge.textContent = total > 99 ? "99+" : total;
-
-//     badge.classList.toggle("hidden", total === 0);
-
-//     button.setAttribute(
-//       "aria-label",
-//       `Connections${total > 0 ? `, ${total} pending requests` : ""}`
-//     );
-//   });
-// }
 
 
 /* ==========================================
@@ -94,30 +64,6 @@ async function loadConnectionRequestCount() {
   }
 }
 
-
-
-// Fetch pending connection requests from MongoDB
-
-// async function loadConnectionRequestCount() {
-//   if (!state.token) {
-//     setConnectionRequestBadge(0);
-//     return;
-//   }
-
-//   try {
-//     const data = await api("/users/connections/requests/count");
-
-//     setConnectionRequestBadge(data.count || 0);
-
-//   } catch (error) {
-//     console.error(
-//       "Connection notification error:",
-//       error.message
-//     );
-//   }
-// }
-
-
 // Preserve the original authentication modal.
 const AUTH_CARD_TEMPLATE =
     document.querySelector("#authModal .modal-card")?.innerHTML || "";
@@ -139,9 +85,9 @@ function toast(message) {
     el.textContent = message;
     el.classList.add("show");
 
-    clearTimeout(window.linkupToastTimer);
+    clearTimeout(window.peokonectToastTimer);
 
-    window.linkupToastTimer = setTimeout(() => {
+    window.peokonectToastTimer = setTimeout(() => {
         el.classList.remove("show");
     }, 3200);
 }
@@ -157,7 +103,7 @@ async function api(path, options={}) {
   return data;
 }
 // ============================================
-// LINKUP: SHOW / HIDE PASSWORD FOR ALL FIELDS
+// PEOKONECT: SHOW / HIDE PASSWORD FOR ALL FIELDS
 // ============================================
 
 function enhancePasswordFields(root = document) {
@@ -269,7 +215,7 @@ function openAuth(mode = "register") {
     const card = $("#authModal .modal-card");
 
     if (!card) {
-        console.error("LINKUP authentication modal not found.");
+        console.error("PEOKONECT authentication modal not found.");
         return;
     }
 
@@ -306,7 +252,7 @@ function openAuth(mode = "register") {
 
     $("#authSwitch").innerHTML = reg
         ? 'Already a member? <button type="button" id="switchMode">Log in</button>'
-        : 'New to LINKUP? <button type="button" id="switchMode">Create an account</button><br><button type="button" id="forgotPasswordLink" class="forgot-password-link">Forgot password?</button>';
+        : 'New to PEOKONECT? <button type="button" id="switchMode">Create an account</button><br><button type="button" id="forgotPasswordLink" class="forgot-password-link">Forgot password?</button>';
 
     $("#switchMode").onclick = () => {
         openAuth(reg ? "login" : "register");
@@ -325,7 +271,7 @@ function showForgotPassword() {
         <h2>Forgot your password?</h2>
 
         <p>
-            Enter the email address connected to your LINKUP account.
+            Enter the email address connected to your PEOKONECT account.
             We will send you a password recovery link.
         </p>
 
@@ -641,7 +587,7 @@ async function loadFeed() {
 }
 function postCard(p){
   const authorId = p.author?._id;
-  const authorName = escapeHTML(p.author?.name || "LINKUP member");
+  const authorName = escapeHTML(p.author?.name || "PEOKONECT member");
   const authorLink = authorId
     ? `<a class="profile-name-link profile-open" href="#member-${encodeURIComponent(authorId)}" data-profile-id="${escapeHTML(authorId)}">${authorName}</a>`
     : `<span>${authorName}</span>`;
@@ -722,7 +668,7 @@ const [{requests},{connections}] = await Promise.all([
 setConnectionRequestBadge(requests.length);
 const requestHTML = requests.map(r=>`<div class="request-row"><div class="connection-person"><img src="${escapeHTML(r.from.photo||"https://placehold.co/80x80/191919/ff8129?text=L")}" alt=""><div><strong>${escapeHTML(r.from.name)}</strong><div class="muted">${escapeHTML(r.from.bio||"Would like to connect with you.")}</div></div></div><div><button class="btn btn-primary respond-btn" data-id="${r._id}" data-accept="true">Accept</button> <button class="btn btn-ghost respond-btn" data-id="${r._id}" data-accept="false">Decline</button></div></div>`).join("");
     $("#requestsList").innerHTML = requestHTML || "No pending connection requests.";
-    $("#connectionsList").innerHTML = connections.length ? connections.map(user=>`<div class="connection-row"><div class="connection-person"><img src="${escapeHTML(user.photo||"https://placehold.co/80x80/191919/ff8129?text=L")}" alt=""><div><strong>${escapeHTML(user.name)}</strong><small>${user.isOnline?"Online":"Connected on LINKUP"}</small></div><i class="online-dot" style="display:${user.isOnline?"block":"none"}"></i></div><button class="btn btn-primary message-user-btn" data-id="${user._id}" data-name="${escapeHTML(user.name)}" data-photo="${escapeHTML(user.photo||"")}">Message</button></div>`).join("") : '<p class="muted">You have no connections yet. Visit Discover to meet people.</p>';
+    $("#connectionsList").innerHTML = connections.length ? connections.map(user=>`<div class="connection-row"><div class="connection-person"><img src="${escapeHTML(user.photo||"https://placehold.co/80x80/191919/ff8129?text=L")}" alt=""><div><strong>${escapeHTML(user.name)}</strong><small>${user.isOnline?"Online":"Connected on PEOKONECT"}</small></div><i class="online-dot" style="display:${user.isOnline?"block":"none"}"></i></div><button class="btn btn-primary message-user-btn" data-id="${user._id}" data-name="${escapeHTML(user.name)}" data-photo="${escapeHTML(user.photo||"")}">Message</button></div>`).join("") : '<p class="muted">You have no connections yet. Visit Discover to meet people.</p>';
   } catch(e){toast(e.message);}
 }
 
@@ -835,11 +781,11 @@ function appendMessage(message) {
 
 
 async function openConversation(userId,name,photo){
-  state.activeConversation={id:String(userId),name:name||"LINKUP member",photo:photo||""};
+  state.activeConversation={id:String(userId),name:name||"PEOKONECT member",photo:photo||""};
   $("#chatEmpty")?.classList.add("hidden");$("#activeChat")?.classList.remove("hidden");
   $("#chatUserName").textContent=state.activeConversation.name;
   $("#chatUserPhoto").src=state.activeConversation.photo||"https://placehold.co/90x90/191919/ff8129?text=L";
-  $("#chatUserStatus").textContent="Connected on LINKUP";
+  $("#chatUserStatus").textContent="Connected on PEOKONECT";
   $("#chatMessages").innerHTML='<div class="chat-loading">Loading conversation…</div>';
   await loadConversations();
   try{const {messages,user}=await api(`/messages/${encodeURIComponent(userId)}`);if(user){$("#chatUserName").textContent=user.name;$("#chatUserStatus").textContent=user.isOnline?"Online":"Offline";}
@@ -855,7 +801,7 @@ async function loadMessages(){
     catch(e){toast("Open a conversation from your accepted connections.");}
   }
 }
-async function loadProfile(){try{const {user}=await api("/auth/me");state.user=user;localStorage.setItem("linkupUser",JSON.stringify(user));const f=$("#profileForm");["name","age","gender","lookingFor","bio"].forEach(k=>f.elements[k].value=user[k]||"");f.elements.interests.value=(user.interests||[]).join(", ");$("#myProfilePhoto").src=user.photo||"https://placehold.co/240x240/191919/ff8129?text=LINKUP";$("#profileDisplayName").innerHTML=escapeHTML(user.name||"Your name")+(user.subscription?.plan==="premium"&&user.subscription?.status==="active"?' <span class="premium-badge">♛ PREMIUM</span>':"");$("#profileDisplayBio").textContent=user.bio||"Add a profile photo and tell people a little about yourself.";await loadGallery(user._id,true);}catch(e){toast(e.message);}}
+async function loadProfile(){try{const {user}=await api("/auth/me");state.user=user;localStorage.setItem("peokonectUser",JSON.stringify(user));const f=$("#profileForm");["name","age","gender","lookingFor","bio"].forEach(k=>f.elements[k].value=user[k]||"");f.elements.interests.value=(user.interests||[]).join(", ");$("#myProfilePhoto").src=user.photo||"https://placehold.co/240x240/191919/ff8129?text=PEOKONECT";$("#profileDisplayName").innerHTML=escapeHTML(user.name||"Your name")+(user.subscription?.plan==="premium"&&user.subscription?.status==="active"?' <span class="premium-badge">♛ PREMIUM</span>':"");$("#profileDisplayBio").textContent=user.bio||"Add a profile photo and tell people a little about yourself.";await loadGallery(user._id,true);}catch(e){toast(e.message);}}
 async function loadGallery(userId,own=false){try{const {photos}=await api(`/users/${userId}/gallery`);if(own){$("#galleryCount").textContent=`${photos.length} photo${photos.length===1?"":"s"}`;$("#myGallery").innerHTML=photos.map(p=>galleryTile(p,true)).join("")||'<p class="muted">Your gallery is empty. Upload your first photos above.</p>';}return photos;}catch(e){if(own)toast(e.message);return [];}}
 
 
@@ -926,7 +872,7 @@ function galleryTile(photo, own = false) {
         </article>
     `;
 }
-async function openPublicProfile(userId){try{const [{user},{photos}]=await Promise.all([api(`/users/${userId}`),api(`/users/${userId}/gallery`)]);const image=user.photo||"https://placehold.co/240x240/191919/ff8129?text=LINKUP";$("#publicProfileContent").innerHTML=`<div class="public-profile-hero"><img src="${escapeHTML(image)}" alt="${escapeHTML(user.name)} profile photo"><div><span class="eyebrow">LINKUP MEMBER ${user.isOnline?"· ONLINE":""}</span><h2>${escapeHTML(user.name)}${user.isPremium?' <span class="premium-badge" title="Premium member">♛</span>':""}${user.age?`, ${user.age}`:""}</h2><p>${escapeHTML(user.bio||"Getting to know new people on LINKUP.")}</p><button class="btn btn-primary connect-btn" data-id="${user._id}">＋ Connect</button> <button class="btn btn-outline profile-like-btn" data-id="${user._id}">♡ Like profile</button></div></div><div class="public-gallery-heading"><div><span class="eyebrow">LIFE IN PICTURES</span><h2>Photo gallery</h2></div><span class="gallery-count">${photos.length} photos</span></div><div class="public-gallery-grid">${photos.map(p=>galleryTile(p,false)).join("")||'<p class="muted">This member has not added photos yet.</p>'}</div>`;showPage("public-profile");}catch(e){toast(e.message);}}
+async function openPublicProfile(userId){try{const [{user},{photos}]=await Promise.all([api(`/users/${userId}`),api(`/users/${userId}/gallery`)]);const image=user.photo||"https://placehold.co/240x240/191919/ff8129?text=PEOKONECT";$("#publicProfileContent").innerHTML=`<div class="public-profile-hero"><img src="${escapeHTML(image)}" alt="${escapeHTML(user.name)} profile photo"><div><span class="eyebrow">PEOKONECT MEMBER ${user.isOnline?"· ONLINE":""}</span><h2>${escapeHTML(user.name)}${user.isPremium?' <span class="premium-badge" title="Premium member">♛</span>':""}${user.age?`, ${user.age}`:""}</h2><p>${escapeHTML(user.bio||"Getting to know new people on PEOKONECT.")}</p><button class="btn btn-primary connect-btn" data-id="${user._id}">＋ Connect</button> <button class="btn btn-outline profile-like-btn" data-id="${user._id}">♡ Like profile</button></div></div><div class="public-gallery-heading"><div><span class="eyebrow">LIFE IN PICTURES</span><h2>Photo gallery</h2></div><span class="gallery-count">${photos.length} photos</span></div><div class="public-gallery-grid">${photos.map(p=>galleryTile(p,false)).join("")||'<p class="muted">This member has not added photos yet.</p>'}</div>`;showPage("public-profile");}catch(e){toast(e.message);}}
 
 function prependActivity(item){
   const el=$("#activityList");if(!el)return;const row=document.createElement("div");row.className="activity-item";row.innerHTML=`<span>${escapeHTML(item.detail||item.type)}</span><small>${new Date(item.createdAt||Date.now()).toLocaleTimeString()}</small>`;el.prepend(row);while(el.children.length>40)el.lastChild.remove();
@@ -949,15 +895,15 @@ $("#authForm")?.addEventListener("submit",async e=>{
     const submittedMode=state.mode;
     const data=await api(`/auth/${submittedMode}`,{method:"POST",body:JSON.stringify(body)});
     if(submittedMode==="register"){
-      window.linkupPendingVerificationEmail=data.email || body.email;
+      window.peokonectPendingVerificationEmail=data.email || body.email;
       $("#authTitle").textContent="Check your email";
-      $("#authSubtitle").textContent="We sent a confirmation link to "+window.linkupPendingVerificationEmail+". Open the email and confirm your address before logging in.";
+      $("#authSubtitle").textContent="We sent a confirmation link to "+window.peokonectPendingVerificationEmail+". Open the email and confirm your address before logging in.";
       $("#authForm").reset();
       $("#resendVerification")?.classList.remove("hidden");
       toast("Confirmation email sent. Please check your inbox.");
       return;
     }
-    state.token=data.token;state.user=data.user;localStorage.setItem("linkupToken",state.token);localStorage.setItem("linkupUser",JSON.stringify(state.user));closeAuth();updateAuthUI();
+    state.token=data.token;state.user=data.user;localStorage.setItem("peokonectToken",state.token);localStorage.setItem("peokonectUser",JSON.stringify(state.user));closeAuth();updateAuthUI();
 
     connectSocket();toast("Welcome back!");showPage("discover");
   } catch(err){toast(err.message);}
@@ -965,7 +911,7 @@ $("#authForm")?.addEventListener("submit",async e=>{
 });
 
 $("#resendVerification")?.addEventListener("click",async()=>{
-  const email=window.linkupPendingVerificationEmail || $("#authForm").elements.email.value;
+  const email=window.peokonectPendingVerificationEmail || $("#authForm").elements.email.value;
   if(!email){toast("Enter the email address you used to register.");return;}
   try{const result=await api("/auth/resend-verification",{method:"POST",body:JSON.stringify({email})});toast(result.message);}
   catch(err){toast(err.message);}
@@ -1075,17 +1021,17 @@ $("#postThumbnail")?.addEventListener("change", e => {
 
 $("#profileForm")?.addEventListener("submit",async e=>{
   e.preventDefault();const f=e.currentTarget;const body={};["name","age","gender","lookingFor","bio"].forEach(k=>body[k]=f.elements[k].value);body.age=Number(body.age)||undefined;body.interests=f.elements.interests.value.split(",").map(s=>s.trim()).filter(Boolean);
-  try{const {user}=await api("/users/profile/me",{method:"PATCH",body:JSON.stringify(body)});state.user=user;localStorage.setItem("linkupUser",JSON.stringify(user));updateAuthUI();$("#profileDisplayName").textContent=user.name;$("#profileDisplayBio").textContent=user.bio||"Add a profile photo and tell people a little about yourself.";toast("Profile updated.");}catch(err){toast(err.message);}
+  try{const {user}=await api("/users/profile/me",{method:"PATCH",body:JSON.stringify(body)});state.user=user;localStorage.setItem("peokonectUser",JSON.stringify(user));updateAuthUI();$("#profileDisplayName").textContent=user.name;$("#profileDisplayBio").textContent=user.bio||"Add a profile photo and tell people a little about yourself.";toast("Profile updated.");}catch(err){toast(err.message);}
 });
 $("#profilePhotoInput")?.addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;const form=new FormData();form.append("photo",file);try{
   const d=await api("/users/profile/photo",{method:"POST",body:form});
   state.user=d.user;
-  localStorage.setItem("linkupUser",JSON.stringify(state.user));
+  localStorage.setItem("peokonectUser",JSON.stringify(state.user));
   $("#myProfilePhoto").src=d.photo;
   updateAuthUI(); loadConnectionRequestCount();
   // Reload the community feed so this user's posts and comments use the saved photo.
   if($("#page-feed")?.classList.contains("active")) await loadFeed();
-  toast("Profile photo updated. Your picture is now shown across LINKUP.");
+  toast("Profile photo updated. Your picture is now shown across PEOKONECT.");
 }catch(err){toast(err.message);}finally{e.target.value="";}});
 $("#galleryFiles")?.addEventListener("change",e=>{$("#gallerySelection").textContent=e.target.files.length?`${e.target.files.length} photo(s) selected`:"No photos selected";});
 $("#galleryUploadForm")?.addEventListener("submit", async e => {
@@ -1263,12 +1209,12 @@ if (e.target.closest("#backToLogin")) {
   if(deletePost&&confirm("Are you sure you want to permanently delete this post?")){try{await api(`/posts/${deletePost.dataset.id}`,{method:"DELETE"});toast("Your post has been deleted.");await loadFeed();}catch(err){toast(err.message);}}
   const galleryLike=e.target.closest(".gallery-like-btn");if(galleryLike){try{const d=await api(`/users/gallery/${galleryLike.dataset.id}/like`,{method:"POST"});galleryLike.textContent=`${d.liked?"♥":"♡"} ${d.likes} likes`;}catch(err){toast(err.message);}}
   const galleryDelete=e.target.closest(".gallery-delete");if(galleryDelete&&confirm("Remove this photo from your profile gallery?")){try{await api(`/users/gallery/${galleryDelete.dataset.id}`,{method:"DELETE"});await loadGallery(state.user._id,true);toast("Photo deleted.");}catch(err){toast(err.message);}}
-  const share=e.target.closest(".share-btn");if(share){const url=share.dataset.shareUrl;try{if(navigator.share)await navigator.share({title:"LINKUP profile",text:"Take a look at this LINKUP profile",url});else{await navigator.clipboard.writeText(url);toast("Profile link copied. You can paste it on your social platforms.");}}catch(err){if(err.name!=="AbortError")toast("Could not share this link.");}}
+  const share=e.target.closest(".share-btn");if(share){const url=share.dataset.shareUrl;try{if(navigator.share)await navigator.share({title:"PEOKONECT profile",text:"Take a look at this PEOKONECT profile",url});else{await navigator.clipboard.writeText(url);toast("Profile link copied. You can paste it on your social platforms.");}}catch(err){if(err.name!=="AbortError")toast("Could not share this link.");}}
   if(e.target.closest("#logoutButton")) {
     try { await api("/auth/logout",{method:"POST"}); } catch (_) {}
     if(state.socket) state.socket.disconnect();
     state.socket=null; state.token=null; state.user=null;setConnectionRequestBadge(0);
-    localStorage.removeItem("linkupToken"); localStorage.removeItem("linkupUser");
+    localStorage.removeItem("peokonectToken"); localStorage.removeItem("peokonectUser");
     updateAuthUI(); window.location.href="/index.html"; toast("You have been logged out safely.");
   }
   const connect=e.target.closest(".connect-btn");if(connect){try{await api(`/users/${connect.dataset.id}/connect`,{method:"POST"});connect.textContent="Request sent";connect.disabled=true;toast("Connection request sent.");}catch(err){toast(err.message);}}
@@ -1464,17 +1410,7 @@ if (!window.connectionNotificationTimer) {
     }
   }, 15000);
 }
-// updateAuthUI();
-// // Load connection notification on every page
-// if (state.token) {
-//   loadConnectionRequestCount();
-// }const initialPage = document.body.dataset.currentPage || "home";
-// showPage(initialPage);
-
-
-
-
-if(state.token){connectSocket();api("/auth/me").then(d=>{state.user=d.user;localStorage.setItem("linkupUser",JSON.stringify(state.user));updateAuthUI();}).catch(()=>{state.token=null;state.user=null;localStorage.removeItem("linkupToken");localStorage.removeItem("linkupUser");updateAuthUI();if(["discover","feed","connections","messages","profile","admin"].includes(initialPage))window.location.href="/index.html";});}
+if(state.token){connectSocket();api("/auth/me").then(d=>{state.user=d.user;localStorage.setItem("peokonectUser",JSON.stringify(state.user));updateAuthUI();}).catch(()=>{state.token=null;state.user=null;localStorage.removeItem("peokonectToken");localStorage.removeItem("peokonectUser");updateAuthUI();if(["discover","feed","connections","messages","profile","admin"].includes(initialPage))window.location.href="/index.html";});}
 
 // Refresh connection notifications every 20 seconds
 if (!window.connectionNotificationTimer) {
@@ -1485,7 +1421,7 @@ if (!window.connectionNotificationTimer) {
   }, 20000);
 }
 
-// LINKUP Premium membership
+// PEOKONECT Premium membership
 const PREMIUM_FEATURES = [
   "See who viewed your profile", "See who liked your profile",
   "Advanced user search and filters", "Unlimited connection requests",
@@ -1515,7 +1451,7 @@ async function loadPremium() {
         <article class="premium-plan gold-plan"><span class="popular-label">BEST EXPERIENCE</span><span class="plan-symbol">♛</span><h2>Premium Membership</h2><p>Unlock the complete PEOKONECT experience.</p><div class="billing-choice"><button class="billing-option selected" data-plan="monthly">Monthly</button><button class="billing-option" data-plan="yearly">Yearly <small>Save 20%</small></button></div><div class="plan-price" id="premiumPrice">₦${monthly.amount.toLocaleString("en-NG")} <small>/ month</small></div><p class="billing-note" id="premiumBillingNote">Billed monthly. Automatic renewal; cancel anytime.</p><button class="btn premium-cta" id="subscribePremium" ${active?"disabled":""}>${active?"You are a Premium member":"♛ Upgrade to Premium"}</button><ul>${PREMIUM_FEATURES.map(x=>`<li><b>✓</b> ${x}</li>`).join("")}</ul><small class="secure-note">Secure recurring card payments powered by Flutterwave.</small></article>
       </div>
       <section class="premium-tools"><h2>Your Premium benefits</h2><div class="premium-tool-grid"><button class="premium-tool" data-premium-tool="viewers">👁 <strong>Profile viewers</strong><span>See who visited your profile</span></button><button class="premium-tool" data-premium-tool="likes">♡ <strong>Profile likes</strong><span>See who liked your profile</span></button></div><div id="premiumResults"></div></section>
-      <p class="premium-terms">Yearly plan: ₦17,856 per year (20% less than 12 monthly payments). Recurring subscriptions are charged to the card used at checkout through the Flutterwave payment plan. Access remains active for the paid period. You can cancel future renewal; refunds are subject to LINKUP's refund policy.</p>`;
+      <p class="premium-terms">Yearly plan: ₦17,856 per year (20% less than 12 monthly payments). Recurring subscriptions are charged to the card used at checkout through the Flutterwave payment plan. Access remains active for the paid period. You can cancel future renewal; refunds are subject to PEOKONECT's refund policy.</p>`;
     let selected = "monthly";
     area.querySelectorAll("[data-plan]").forEach(btn => btn.addEventListener("click", () => {
       selected = btn.dataset.plan;
@@ -1541,14 +1477,14 @@ async function loadPremium() {
         const endpoint = btn.dataset.premiumTool === "viewers" ? "/premium/profile-viewers" : "/premium/profile-likes";
         const data = await api(endpoint);
         const people = data.viewers ? data.viewers.map(v => ({ user: v.viewer, date: v.viewedAt })) : data.users.map(user => ({ user }));
-        results.innerHTML = people.length ? people.map(item => `<div class="premium-result"><img src="${escapeHTML(item.user?.photo || "https://placehold.co/60x60")}" alt=""><strong>${escapeHTML(item.user?.name || "LINKUP member")}</strong><small>${item.date ? new Date(item.date).toLocaleString() : ""}</small></div>`).join("") : "<p>No activity to show yet.</p>";
+        results.innerHTML = people.length ? people.map(item => `<div class="premium-result"><img src="${escapeHTML(item.user?.photo || "https://placehold.co/60x60")}" alt=""><strong>${escapeHTML(item.user?.name || "PEOKONECT member")}</strong><small>${item.date ? new Date(item.date).toLocaleString() : ""}</small></div>`).join("") : "<p>No activity to show yet.</p>";
       } catch (e) { results.textContent = e.message; }
     }));
     const params = new URLSearchParams(location.search);
     if (params.get("payment") === "return") {
       const txId = params.get("transaction_id"), reference = params.get("tx_ref"), status = params.get("status");
       if (status === "successful" && txId && reference && state.token) {
-        try { await api("/premium/verify", { method: "POST", body: JSON.stringify({ transactionId: txId, reference }) }); toast("Welcome to LINKUP Premium!"); history.replaceState({}, "", "/premium.html"); loadPremium(); }
+        try { await api("/premium/verify", { method: "POST", body: JSON.stringify({ transactionId: txId, reference }) }); toast("Welcome to PEOKONECT Premium!"); history.replaceState({}, "", "/premium.html"); loadPremium(); }
         catch (e) { toast(e.message); }
       } else if (status === "cancelled") toast("Checkout was cancelled. No Premium membership was activated.");
     }
@@ -1556,7 +1492,7 @@ async function loadPremium() {
 }
 
 /* =====================================
-   LINKUP GALLERY IMAGE LIGHTBOX
+   PEOKONECT GALLERY IMAGE LIGHTBOX
 ===================================== */
 
 (function initGalleryLightbox() {

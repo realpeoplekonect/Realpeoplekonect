@@ -37,7 +37,7 @@
           <span class="eyebrow"> REAL PEOPLE, REAL CONNECTION </span>
           <h1>Make room for<br><em>real connection</em></h1>
           <p>Meet genuine people, share your world and build relationships that mean something. Friendship, community or the possibility of real love — start with a hello.</p>
-          <div class="hero-actions"><button class="btn btn-primary btn-large" id="heroJoin">Create your account <span>↗</span></button><button class="btn btn-outline btn-large" data-page="discover">Explore LINKUP</button></div>
+          <div class="hero-actions"><button class="btn btn-primary btn-large" id="heroJoin">Create your account <span>↗</span></button><button class="btn btn-outline btn-large" data-page="discover">Explore PEOKONECT</button></div>
           <div class="hero-proof"><div class="avatar-stack"><b>A</b><b>M</b><b>J</b><b>+</b></div><span>A community built around <strong>authentic connection</strong></span></div>
         </div>
         <div class="hero-art">
@@ -61,7 +61,7 @@
     </section>
 
     <section id="page-feed" class="page">
-      <div class="page-heading"><div><span class="eyebrow">THE LINKUP COMMUNITY</span><h1>Moments worth <em>sharing.</em></h1><p>Share a photo, leave a kind comment and celebrate each other.</p></div></div>
+      <div class="page-heading"><div><span class="eyebrow">THE PEOKONECT COMMUNITY</span><h1>Moments worth <em>sharing.</em></h1><p>Share a photo, leave a kind comment and celebrate each other.</p></div></div>
       <div class="feed-layout">
         <div class="feed-main">
           <form id="postForm" class="composer card">
@@ -87,7 +87,7 @@
         <section class="chat-panel">
           <div id="chatEmpty" class="chat-empty"><div class="message-symbol">✉</div><h3>Your next great conversation starts here.</h3><p>Select a connection to send a private message, or discover someone new.</p><button class="btn btn-primary" data-page="discover">Discover people</button></div>
           <div id="activeChat" class="active-chat hidden">
-            <header class="chat-header"><img id="chatUserPhoto" src="https://placehold.co/90x90/191919/ff8129?text=L" alt=""><div><strong id="chatUserName">Member</strong><small id="chatUserStatus">Connected on LINKUP</small></div><div class="chat-call-actions"><button type="button" class="call-action-btn" data-call-type="audio" title="Audio call">☎</button><button type="button" class="call-action-btn" data-call-type="video" title="Video call">▣</button></div></header>
+            <header class="chat-header"><img id="chatUserPhoto" src="https://placehold.co/90x90/191919/ff8129?text=L" alt=""><div><strong id="chatUserName">Member</strong><small id="chatUserStatus">Connected on PEOKONECT</small></div><div class="chat-call-actions"><button type="button" class="call-action-btn" data-call-type="audio" title="Audio call">☎</button><button type="button" class="call-action-btn" data-call-type="video" title="Video call">▣</button></div></header>
             <div id="chatMessages" class="chat-messages" aria-live="polite"></div>
             <form id="chatForm" class="chat-composer"><input id="chatInput" name="text" maxlength="3000" placeholder="Write a message…" autocomplete="off" required><label class="chat-attach-btn" title="Attach audio or video">＋<input id="chatMediaInput" type="file" accept="audio/*,video/mp4,video/webm,video/quicktime" hidden></label><button type="button" id="recordVoiceBtn" class="chat-attach-btn" title="Record voice message">🎙</button><button type="submit" class="btn btn-primary">Send ↗</button></form>
           </div>
@@ -97,9 +97,9 @@
 
     <section id="page-profile" class="page">
       <div class="page-heading"><div><span class="eyebrow">YOUR SPACE</span><h1>Your <em>profile.</em></h1><p>Show the community who you are, one moment at a time.</p></div></div>
-      <div class="profile-cover card"><div class="profile-display-photo"><img id="myProfilePhoto" src="https://placehold.co/240x240/191919/ff8129?text=LINKUP" alt="Your profile photo"><label for="profilePhotoInput" class="photo-edit-badge">＋ Change photo</label><input id="profilePhotoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden></div><div class="profile-cover-copy"><span class="eyebrow">YOUR PEOKONECT IDENTITY</span><h2 id="profileDisplayName">Your name</h2><p id="profileDisplayBio">Add a profile photo and tell people a little about yourself.</p></div></div>
+      <div class="profile-cover card"><div class="profile-display-photo"><img id="myProfilePhoto" src="https://placehold.co/240x240/191919/ff8129?text=PEOKONECT" alt="Your profile photo"><label for="profilePhotoInput" class="photo-edit-badge">＋ Change photo</label><input id="profilePhotoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden></div><div class="profile-cover-copy"><span class="eyebrow">YOUR PEOKONECT IDENTITY</span><h2 id="profileDisplayName">Your name</h2><p id="profileDisplayBio">Add a profile photo and tell people a little about yourself.</p></div></div>
       <div class="profile-workspace"><form id="profileForm" class="card profile-form"><div class="panel-heading"><h3>Edit your details</h3></div><label>Display name<input name="name" required maxlength="70"></label><label>Age<input name="age" type="number" min="18" max="100"></label><label>Gender<input name="gender" placeholder="Optional"></label><label>I'm looking for<input name="lookingFor" placeholder="Friendship, relationship, community..."></label><label>About me<textarea name="bio" maxlength="500" rows="4"></textarea></label><label>Interests <input name="interests" placeholder="Music, travel, books (separate with commas)"></label><button class="btn btn-primary" type="submit">Save profile details</button></form>
-      <div class="card gallery-manager"><div class="panel-heading"><div><span class="eyebrow">YOUR PHOTO STORY</span><h3>Profile gallery</h3></div><span class="gallery-count" id="galleryCount">0 photos</span></div><p class="gallery-intro">Upload multiple photos for other LINKUP members to view, like, comment on and share.</p><form id="galleryUploadForm" class="gallery-upload"><label class="gallery-drop" for="galleryFiles"><span>＋</span><strong>Add photos to your profile</strong><small>Select up to 10 images per upload · JPG, PNG or WEBP · 8MB each</small></label><input id="galleryFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden><div id="gallerySelection" class="muted">No photos selected</div><button class="btn btn-primary" type="submit">Upload to gallery</button></form><div id="myGallery" class="gallery-grid"></div></div></div>
+      <div class="card gallery-manager"><div class="panel-heading"><div><span class="eyebrow">YOUR PHOTO STORY</span><h3>Profile gallery</h3></div><span class="gallery-count" id="galleryCount">0 photos</span></div><p class="gallery-intro">Upload multiple photos for other PEOKONECT members to view, like, comment on and share.</p><form id="galleryUploadForm" class="gallery-upload"><label class="gallery-drop" for="galleryFiles"><span>＋</span><strong>Add photos to your profile</strong><small>Select up to 10 images per upload · JPG, PNG or WEBP · 8MB each</small></label><input id="galleryFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden><div id="gallerySelection" class="muted">No photos selected</div><button class="btn btn-primary" type="submit">Upload to gallery</button></form><div id="myGallery" class="gallery-grid"></div></div></div>
     </section>
     <section id="page-public-profile" class="page"><button class="text-link back-link" data-page="discover">← Back to discover</button><div id="publicProfileContent"></div></section>
 

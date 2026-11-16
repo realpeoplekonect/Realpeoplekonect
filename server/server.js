@@ -36,16 +36,16 @@ app.get("/share/profile/:id", async (req, res) => {
     const user = await User.findById(req.params.id).select("name bio photo");
     if (!user) return res.status(404).send("Profile not found");
     const esc = value => String(value || "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
-    const title = `${esc(user.name)} on LINKUP`;
-    const description = esc((user.bio || "See this member's profile and photo gallery on LINKUP.").slice(0, 180));
-    const image = esc(user.photo || "https://placehold.co/1200x630/191919/ff8129?text=LINKUP");
+    const title = `${esc(user.name)} on PEOKONECT`;
+    const description = esc((user.bio || "See this member's profile and photo gallery on PEOKONECT.").slice(0, 180));
+    const image = esc(user.photo || "https://placehold.co/1200x630/191919/ff8129?text=PEOKONECT");
     const target = `/ ?profile=${encodeURIComponent(String(user._id))}`.replace("/ ?", "/?");
-    res.type("html").send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><meta name="description" content="${description}"><meta property="og:type" content="profile"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:image" content="${image}"><meta property="og:url" content="${req.protocol}://${req.get("host")}${req.originalUrl}"><meta name="twitter:card" content="summary_large_image"><meta http-equiv="refresh" content="0;url=${target}"></head><body><p>Opening LINKUP profile...</p><script>location.replace(${JSON.stringify(target)});</script></body></html>`);
+    res.type("html").send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><meta name="description" content="${description}"><meta property="og:type" content="profile"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:image" content="${image}"><meta property="og:url" content="${req.protocol}://${req.get("host")}${req.originalUrl}"><meta name="twitter:card" content="summary_large_image"><meta http-equiv="refresh" content="0;url=${target}"></head><body><p>Opening PEOKONECT profile...</p><script>location.replace(${JSON.stringify(target)});</script></body></html>`);
   } catch (err) { res.status(500).send("Could not load profile preview"); }
 });
 app.use(express.static(path.join(__dirname, "../public")));
 
-app.get("/api/health", (_req, res) => res.json({ ok: true, service: "LINKUP API" }));
+app.get("/api/health", (_req, res) => res.json({ ok: true, service: "PEOKONECT API" }));
 app.get("/api/calls/ice-config", protect, (_req, res) => {
   const iceServers = [
     { urls: "stun:stun.l.google.com:19302" },
@@ -372,11 +372,11 @@ async function seedAdmin() {
     const bcrypt = require("bcryptjs");
     const passwordHash = await bcrypt.hash(password, 12);
     await User.create({
-      name: process.env.ADMIN_NAME || "LINKUP Administrator",
+      name: process.env.ADMIN_NAME || "PEOKONECT Administrator",
       email: email.toLowerCase(), passwordHash, role: "admin",
       isVerified: true, bio: "Platform administrator"
     });
-    console.log("LINKUP admin account created from environment settings.");
+    console.log("PEOKONECT admin account created from environment settings.");
   }
 }
 
@@ -385,7 +385,7 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(async () => {
     console.log("MongoDB connected");
     await seedAdmin();
-    server.listen(PORT, () => console.log(`LINKUP running on port ${PORT}`));
+    server.listen(PORT, () => console.log(`PEOKONECT running on port ${PORT}`));
   })
   .catch(err => {
     console.error("MongoDB connection failed:", err.message);

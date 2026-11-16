@@ -77,7 +77,7 @@ router.post("/checkout", protect, async (req, res) => {
     if (active(req.user)) return res.status(409).json({ message: "You already have an active Premium membership." });
     const planId = process.env[PLAN_ENV[plan]];
     if (!planId) return res.status(503).json({ message: `Flutterwave ${plan} payment plan is not configured. Add ${PLAN_ENV[plan]}.` });
-    const reference = `LINKUP-PREMIUM-${plan.toUpperCase()}-${req.user._id}-${crypto.randomUUID()}`;
+    const reference = `PEOKONECT-PREMIUM-${plan.toUpperCase()}-${req.user._id}-${crypto.randomUUID()}`;
     const payment = await PremiumPayment.create({ user: req.user._id, reference, plan, amount: PRICES[plan] });
     const origin = process.env.CLIENT_URL || `${req.protocol}://${req.get("host")}`;
     const checkout = await apiCall("https://api.flutterwave.com/v3/payments", {
@@ -88,8 +88,8 @@ router.post("/checkout", protect, async (req, res) => {
         payment_plan: Number(planId),
         payment_options: "card",
         customer: { email: req.user.email, name: req.user.name },
-        customizations: { title: "LINKUP Premium", description: `${plan} Premium membership`, logo: `${origin}/favicon.ico` },
-        meta: { userId: String(req.user._id), plan, purpose: "linkup_premium" }
+        customizations: { title: "PEOKONECT Premium", description: `${plan} Premium membership`, logo: `${origin}/favicon.ico` },
+        meta: { userId: String(req.user._id), plan, purpose: "peokonect_premium" }
       })
     });
     res.json({ checkoutUrl: checkout.data.link, reference });

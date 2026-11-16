@@ -481,38 +481,75 @@ function connectSocket(){
   state.socket.on("admin:activity",item=>{if($("#page-admin").classList.contains("active"))prependActivity(item);});
   state.socket.on("presence:update",item=>{const card=document.querySelector(`[data-user-id="${item.userId}"] .online-dot`);if(card)card.style.display=item.isOnline?"block":"none";});
 
-  state.socket.on("message:new", async message => {
-    const activeId = state.activeConversation?.id;
-    if (activeId && String(message.sender) === String(activeId) && document.body.dataset.currentPage === "messages") {
-      appendMessage(message);
-      await api(`/messages/${activeId}`).catch(() => {});
-      loadConversations();
-    } else {
-      loadConversations();
-      toast("You received a new message.");
-    }
-  });
+  
+// Receive new messages immediately.
+state.socket.on("message:new", async message => {
+  if (!message || !message._id) return;
 
-// Receive read receipt notifications.
+  const activeId = state.activeConversation?.id;
+  const currentPage = document.body.dataset.currentPage;
+
+  const isActiveConversation =
+    activeId &&
+    currentPage === "messages" &&
+    (
+      String(message.sender) === String(activeId) ||
+      String(message.recipient) === String(activeId)
+    );
+
+  if (isActiveConversation) {
+    // Prevent duplicate messages.
+    const alreadyDisplayed = document.querySelector(
+      `.chat-message[data-message-id="${message._id}"]`
+    );
+
+    if (!alreadyDisplayed) {
+      appendMessage(message);
+    }
+
+    // Mark incoming messages as read immediately.
+    if (String(message.sender) !== String(state.user?._id)) {
+      try {
+        await api(`/messages/${encodeURIComponent(activeId)}`);
+      } catch (error) {
+        console.error("Could not update read status:", error);
+      }
+    }
+
+    await loadConversations();
+
+  } else {
+    await loadConversations();
+    toast("You received a new message.");
+  }
+});
+
+// Update double ticks immediately when a message is read.
 state.socket.on("message:read", data => {
   if (!data || !Array.isArray(data.messageIds)) return;
 
-  const readIds = new Set(data.messageIds.map(String));
+  const readAt = data.readAt
+    ? new Date(data.readAt)
+    : new Date();
 
-  document.querySelectorAll(".chat-message.mine[data-message-id]")
-    .forEach(row => {
-      if (!readIds.has(row.dataset.messageId)) return;
+  data.messageIds.forEach(id => {
+    const row = document.querySelector(
+      `.chat-message.mine[data-message-id="${id}"]`
+    );
 
-      const ticks = row.querySelector(".message-read-ticks");
+    if (!row) return;
 
-      if (ticks) {
-        ticks.textContent = "✓✓";
-        ticks.classList.add("is-read");
-        ticks.title = `Read at ${new Date(data.readAt).toLocaleString()}`;
-        ticks.setAttribute("aria-label", "Read");
-      }
-    });
+    const ticks = row.querySelector(".message-read-ticks");
+
+    if (!ticks) return;
+
+    ticks.textContent = "✓✓";
+    ticks.classList.add("is-read");
+    ticks.title = `Read at ${readAt.toLocaleString()}`;
+    ticks.setAttribute("aria-label", "Read");
+  });
 });
+
   state.socket.on("connection:new", async item => {
   toast(`${item.name} sent you a connection request.`);
 

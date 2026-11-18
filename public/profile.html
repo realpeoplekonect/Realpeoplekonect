@@ -24,7 +24,7 @@
   <span id="connectionRequestBadge"
         class="notification-badge hidden">0</span>
 </button>
-      <button data-page="messages" class="nav-link">Messages</button><button data-page="premium" class="nav-link">♛ Premium</button>
+      <button data-page="messages" class="nav-link">Messages</button><button data-page="premium" class="nav-link"><span class="premium-crown" aria-hidden="true"></span> Premium</button>
     </nav>
     <div class="top-actions"><button id="loginOpen" class="btn btn-ghost">Log in</button><button id="registerOpen" class="btn btn-primary">Create Account</button><button id="profileButton" class="btn btn-ghost hidden" aria-label="Open profile">My profile</button><button id="logoutButton" class="btn btn-logout hidden" type="button">Log out</button></div>
   </header>
@@ -98,7 +98,7 @@
       <div class="page-heading"><div><span class="eyebrow">YOUR PEOKONECT PROFILE</span><h1>Your <em>profile.</em></h1><p>Show the community who you are, one moment at a time.</p></div></div>
       <div class="profile-cover card"><div class="profile-display-photo"><img id="myProfilePhoto" src="https://placehold.co/240x240/191919/ff8129?text=PEOKONECT" alt="Your profile photo"><label for="profilePhotoInput" class="photo-edit-badge">＋ Change photo</label><input id="profilePhotoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden></div><div class="profile-cover-copy"><span class="eyebrow">YOUR PEOKONECT IDENTITY</span><h2 id="profileDisplayName">Your name</h2><p id="profileDisplayBio">Add a profile photo and tell people a little about yourself.</p></div></div>
       <div class="profile-workspace"><form id="profileForm" class="card profile-form"><div class="panel-heading"><h3>Edit your details</h3></div><label>Display name<input name="name" required maxlength="70"></label><label>Age<input name="age" type="number" min="18" max="100"></label><label>Gender<input name="gender" placeholder="Optional"></label><label>I'm looking for<input name="lookingFor" placeholder="Friendship, relationship, community..."></label><label>About me<textarea name="bio" maxlength="500" rows="4"></textarea></label><label>Interests <input name="interests" placeholder="Music, travel, books (separate with commas)"></label><button class="btn btn-primary" type="submit">Save profile details</button></form>
-      <div class="card gallery-manager"><div class="panel-heading"><div><span class="eyebrow">YOUR PHOTO STORY</span><h3>Profile gallery</h3></div><span class="gallery-count" id="galleryCount">0 photos</span></div><p class="gallery-intro">Upload multiple photos for other PEOKONECT members to view, like, comment on and share.</p><form id="galleryUploadForm" class="gallery-upload"><label class="gallery-drop" for="galleryFiles"><span>＋</span><strong>Add photos to your profile</strong><small>Select up to 10 images per upload · JPG, PNG or WEBP · 8MB each</small></label><input id="galleryFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden><div id="gallerySelection" class="muted">No photos selected</div><button class="btn btn-primary" type="submit">Upload to gallery</button>
+      <div class="card gallery-manager"><div class="panel-heading"><div><span class="eyebrow">YOUR MEDIA</span><h3>Profile gallery</h3></div><span class="gallery-count" id="galleryCount">0 items</span></div><p class="gallery-intro">Add photos and videos for other Peokonect members to see.</p><form id="galleryUploadForm" class="gallery-upload"><label class="gallery-drop" for="galleryFiles"><span>＋</span><strong>Add photos to your profile</strong><small>Select up to 10 images per upload · JPG, PNG or WEBP · 8MB each</small></label><input id="galleryFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden><div id="gallerySelection" class="muted">No photos selected</div><button class="btn btn-primary" type="submit">Upload to gallery</button>
       
       <div id="galleryUploadProgress" class="gallery-upload-progress hidden">
     <div class="gallery-upload-progress-heading">
@@ -115,9 +115,20 @@
     </small>
 </div>
       
-      </form><div id="myGallery" class="gallery-grid"></div></div></div>
+      </form>
+      <form id="galleryVideoForm" class="gallery-upload gallery-video-upload">
+        <label for="galleryVideo">Add a video</label>
+        <input id="galleryVideo" name="video" type="file" accept="video/mp4,video/webm,video/quicktime,.mov" required>
+        <small>MP4, WebM or MOV · Up to 100 MB</small>
+        <label for="galleryThumbnail">Video thumbnail (optional)</label>
+        <input id="galleryThumbnail" name="thumbnail" type="file" accept="image/jpeg,image/png,image/webp">
+        <small>JPG, PNG or WebP · Up to 8 MB</small>
+        <button class="btn btn-primary" type="submit">Upload video</button>
+        <p id="galleryVideoStatus" role="status"></p>
+      </form>
+      <div id="myGallery" class="gallery-grid"></div></div></div>
     </section>
-    <section id="page-public-profile" class="page"><button class="text-link back-link" data-page="discover">← Back to discover</button><div id="publicProfileContent"></div></section>
+    <section id="page-public-profile" class="page"><button class="text-link back-link" data-page="discover">← Back to discover</button><div id="publicProfileContent"><p id="publicProfileStatus" role="status">Loading member profile…</p></div></section>
 
     <section id="page-admin" class="page">
       <div class="page-heading"><div><span class="eyebrow">PLATFORM CONTROL</span><h1>Admin <em>overview.</em></h1><p>Monitor registrations, sign-ins, online presence and community activity.</p></div><span class="live-pill"><i></i> LIVE ACTIVITY</span></div>

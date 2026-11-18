@@ -24,7 +24,7 @@
   <span id="connectionRequestBadge"
         class="notification-badge hidden">0</span>
 </button>
-      <button data-page="messages" class="nav-link">Messages</button><button data-page="premium" class="nav-link">♛ Premium</button>
+      <button data-page="messages" class="nav-link">Messages</button><button data-page="premium" class="nav-link"><span class="premium-crown" aria-hidden="true"></span> Premium</button>
     </nav>
     <div class="top-actions"><button id="loginOpen" class="btn btn-ghost">Log in</button><button id="registerOpen" class="btn btn-primary">Create Account</button><button id="profileButton" class="btn btn-ghost hidden" aria-label="Open profile">My profile</button><button id="logoutButton" class="btn btn-logout hidden" type="button">Log out</button></div>
   </header>
@@ -155,13 +155,6 @@
     hidden
   >
 
-  <!-- <button
-    type="button"
-    id="recordVoiceBtn"
-    class="chat-attach-btn"
-    title="Record voice message"
-  >🎙</button> -->
-
 <button
   type="button"
   id="recordVoiceBtn"
@@ -177,6 +170,7 @@
     <path d="M5 10v2a7 7 0 0 0 14 0v-2"/>
     <path d="M12 19v3M8 22h8"/>
   </svg>
+  <span class="voice-stop-icon" aria-hidden="true"></span>
 </button>
 
 

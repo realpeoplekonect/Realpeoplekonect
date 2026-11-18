@@ -236,6 +236,13 @@ socket.on("call:initiate", async ({
 
     activeCalls.set(String(callId), session);
 
+    setTimeout(() => {
+      if (activeCalls.get(session.callId) !== session || session.status !== "ringing") return;
+      activeCalls.delete(session.callId);
+      const event = { callId: session.callId, reason: "no-answer" };
+      io.to(session.callerId).to(session.recipientId).emit("call:ended", event);
+    }, 35000).unref();
+
     // Notify recipient.
     io.to(String(recipientId)).emit("call:incoming", {
       callId: session.callId,
@@ -272,6 +279,7 @@ socket.on("call:accept", async ({ callId } = {}) => {
     call.callerId,
     call.recipientId
   );
+  if (activeCalls.get(call.callId) !== call || call.status !== "ringing") return;
   if (!allowed) {
     io.to(call.callerId).emit("call:error", {
       message: "Connection is no longer valid."

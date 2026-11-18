@@ -1,5 +1,11 @@
+function premiumMemberBadge(showLabel = false) {
+  const label = showLabel ? "Premium" : "";
+  return ` <span class="premium-member-badge"${showLabel ? "" : ' role="img" aria-label="Premium member" title="Premium member"'}>
+    <span class="premium-crown" aria-hidden="true"></span>${label}</span>`;
+}
+
 const API = "/api";
-const state = { token: localStorage.getItem("peokonectToken"), user: JSON.parse(localStorage.getItem("peokonectUser") || "null"), mode: "register", socket: null, users: [], activeConversation: null, call: null, voiceRecorder: null, voiceStream: null };
+const state = { token: localStorage.getItem("peokonectToken"), user: JSON.parse(localStorage.getItem("peokonectUser") || "null"), mode: "register", socket: null, users: [], activeConversation: null, call: null, voiceRecording: null };
 const $ = s => document.querySelector(s);
 
 
@@ -404,7 +410,8 @@ function showPage(name){
     return;
   }
   const currentPage=document.body.dataset.currentPage||"home";
-  if(PAGE_FILES[name] && name!==currentPage){
+  const isMemberProfile = currentPage === "profile" && new URLSearchParams(location.search).has("user");
+  if(PAGE_FILES[name] && (name!==currentPage || (name==="profile" && isMemberProfile))){
     window.location.href=PAGE_FILES[name];
     return;
   }
@@ -565,7 +572,7 @@ const callActions = `<div class="profile-call-actions">
     <span>Video call</span>
   </button>
 </div>`;
-  return `<article class="person-card" data-user-id="${user._id}"><div class="person-photo profile-open" data-profile-id="${user._id}" role="button" tabindex="0"><img src="${escapeHTML(photo)}" alt="${escapeHTML(user.name)}"><i class="online-dot" style="display:${user.isOnline?"block":"none"}"></i></div><div class="person-info"><h3 class="profile-open" data-profile-id="${user._id}" role="button" tabindex="0">${escapeHTML(user.name)}${user.isPremium?' <span class="premium-badge" title="Premium member">♛</span>':""}${user.age?`, ${user.age}`:""}</h3><p>${escapeHTML(user.bio||"Ready to meet new people and make meaningful connections.")}</p>${(user.interests||[]).slice(0,3).map(x=>`<span class="tag">${escapeHTML(x)}</span>`).join("")}${action}${callActions}</div></article>`;
+  return `<article class="person-card" data-user-id="${user._id}"><div class="person-photo profile-open" data-profile-id="${user._id}" role="button" tabindex="0"><img src="${escapeHTML(photo)}" alt="${escapeHTML(user.name)}"><i class="online-dot" style="display:${user.isOnline?"block":"none"}"></i></div><div class="person-info"><h3><a class="profile-name-link" href="/profile.html?user=${encodeURIComponent(user._id)}">${escapeHTML(user.name)}</a>${user.isPremium?premiumMemberBadge():""}${user.age?`, ${user.age}`:""}</h3><p>${escapeHTML(user.bio||"Ready to meet new people and make meaningful connections.")}</p>${(user.interests||[]).slice(0,3).map(x=>`<span class="tag">${escapeHTML(x)}</span>`).join("")}${action}${callActions}</div></article>`;
 }
 async function loadDiscover(query=""){
   try{const {users}=await api("/users/discover"+(query?"?q="+encodeURIComponent(query):""));state.users=users;$("#discoverGrid").innerHTML=users.map(personCard).join("")||"<p>No profiles to show yet. Check back soon.</p>";$("#homePeople").innerHTML=users.slice(0,3).map(personCard).join("");}
@@ -801,8 +808,8 @@ async function loadMessages(){
     catch(e){toast("Open a conversation from your accepted connections.");}
   }
 }
-async function loadProfile(){try{const {user}=await api("/auth/me");state.user=user;localStorage.setItem("peokonectUser",JSON.stringify(user));const f=$("#profileForm");["name","age","gender","lookingFor","bio"].forEach(k=>f.elements[k].value=user[k]||"");f.elements.interests.value=(user.interests||[]).join(", ");$("#myProfilePhoto").src=user.photo||"https://placehold.co/240x240/191919/ff8129?text=PEOKONECT";$("#profileDisplayName").innerHTML=escapeHTML(user.name||"Your name")+(user.subscription?.plan==="premium"&&user.subscription?.status==="active"?' <span class="premium-badge">♛ PREMIUM</span>':"");$("#profileDisplayBio").textContent=user.bio||"Add a profile photo and tell people a little about yourself.";await loadGallery(user._id,true);}catch(e){toast(e.message);}}
-async function loadGallery(userId,own=false){try{const {photos}=await api(`/users/${userId}/gallery`);if(own){$("#galleryCount").textContent=`${photos.length} photo${photos.length===1?"":"s"}`;$("#myGallery").innerHTML=photos.map(p=>galleryTile(p,true)).join("")||'<p class="muted">Your gallery is empty. Upload your first photos above.</p>';}return photos;}catch(e){if(own)toast(e.message);return [];}}
+async function loadProfile(){try{const {user}=await api("/auth/me");state.user=user;localStorage.setItem("peokonectUser",JSON.stringify(user));const f=$("#profileForm");["name","age","gender","lookingFor","bio"].forEach(k=>f.elements[k].value=user[k]||"");f.elements.interests.value=(user.interests||[]).join(", ");$("#myProfilePhoto").src=user.photo||"https://placehold.co/240x240/191919/ff8129?text=PEOKONECT";$("#profileDisplayName").innerHTML=escapeHTML(user.name||"Your name")+(user.subscription?.plan==="premium"&&user.subscription?.status==="active"?premiumMemberBadge(true):"");$("#profileDisplayBio").textContent=user.bio||"Add a profile photo and tell people a little about yourself.";await loadGallery(user._id,true);}catch(e){toast(e.message);}}
+async function loadGallery(userId,own=false){try{const {photos}=await api(`/users/${userId}/gallery`);if(own){$("#galleryCount").textContent=`${photos.length} item${photos.length===1?"":"s"}`;$("#myGallery").innerHTML=photos.map(p=>galleryTile(p,true)).join("")||'<p class="muted">Your gallery is empty. Add a photo or video above.</p>';}return photos;}catch(e){if(own)toast(e.message);return [];}}
 
 
 
@@ -821,7 +828,11 @@ function galleryTile(photo, own = false) {
     return `
         <article class="gallery-tile">
 
-            <img
+            ${photo.video ? `
+              <video class="gallery-video" src="${escapeHTML(photo.video)}"
+                ${photo.thumbnail ? `poster="${escapeHTML(photo.thumbnail)}"` : ""}
+                controls playsinline preload="metadata" aria-label="Profile gallery video"></video>
+            ` : `<img
                 src="${escapeHTML(photo.image)}"
                 alt="Profile gallery photo"
                 class="gallery-image"
@@ -829,7 +840,7 @@ function galleryTile(photo, own = false) {
                 role="button"
                 tabindex="0"
                 aria-label="Open gallery photo"
-            >
+            >`}
 
             <div class="gallery-tile-body">
                 <p>${escapeHTML(photo.caption || "")}</p>
@@ -872,7 +883,11 @@ function galleryTile(photo, own = false) {
         </article>
     `;
 }
-async function openPublicProfile(userId){try{const [{user},{photos}]=await Promise.all([api(`/users/${userId}`),api(`/users/${userId}/gallery`)]);const image=user.photo||"https://placehold.co/240x240/191919/ff8129?text=PEOKONECT";$("#publicProfileContent").innerHTML=`<div class="public-profile-hero"><img src="${escapeHTML(image)}" alt="${escapeHTML(user.name)} profile photo"><div><span class="eyebrow">PEOKONECT MEMBER ${user.isOnline?"· ONLINE":""}</span><h2>${escapeHTML(user.name)}${user.isPremium?' <span class="premium-badge" title="Premium member">♛</span>':""}${user.age?`, ${user.age}`:""}</h2><p>${escapeHTML(user.bio||"Getting to know new people on PEOKONECT.")}</p><button class="btn btn-primary connect-btn" data-id="${user._id}">＋ Connect</button> <button class="btn btn-outline profile-like-btn" data-id="${user._id}">♡ Like profile</button></div></div><div class="public-gallery-heading"><div><span class="eyebrow">LIFE IN PICTURES</span><h2>Photo gallery</h2></div><span class="gallery-count">${photos.length} photos</span></div><div class="public-gallery-grid">${photos.map(p=>galleryTile(p,false)).join("")||'<p class="muted">This member has not added photos yet.</p>'}</div>`;showPage("public-profile");}catch(e){toast(e.message);}}
+async function openPublicProfile(userId){const encodedUserId=encodeURIComponent(userId);try{const [{user},{photos}]=await Promise.all([api(`/users/${encodedUserId}`),api(`/users/${encodedUserId}/gallery`)]);const image=user.photo||"https://placehold.co/240x240/191919/ff8129?text=PEOKONECT";$("#publicProfileContent").innerHTML=`<div class="public-profile-hero"><img src="${escapeHTML(image)}" alt="${escapeHTML(user.name)} profile photo"><div><span class="eyebrow">PEOKONECT MEMBER ${user.isOnline?"· ONLINE":""}</span><h2>${escapeHTML(user.name)}${user.isPremium?premiumMemberBadge():""}${user.age?`, ${user.age}`:""}</h2><p>${escapeHTML(user.bio||"Getting to know new people on PEOKONECT.")}</p><button class="btn btn-primary connect-btn" data-id="${user._id}">＋ Connect</button> <button class="btn btn-outline profile-like-btn" data-id="${user._id}">♡ Like profile</button></div></div><div class="public-gallery-heading"><div><span class="eyebrow">LIFE IN PICTURES</span><h2>Profile gallery</h2></div><span class="gallery-count">${photos.length} ${photos.length===1?"item":"items"}</span></div><div class="public-gallery-grid">${photos.map(p=>galleryTile(p,false)).join("")||'<p class="muted">This member has not added photos or videos yet.</p>'}</div>`;showPage("public-profile");}catch(e){
+  const status = $("#publicProfileStatus");
+  if (status) status.textContent = e.message || "Could not load this profile.";
+  else toast(e.message);
+}}
 
 function prependActivity(item){
   const el=$("#activityList");if(!el)return;const row=document.createElement("div");row.className="activity-item";row.innerHTML=`<span>${escapeHTML(item.detail||item.type)}</span><small>${new Date(item.createdAt||Date.now()).toLocaleTimeString()}</small>`;el.prepend(row);while(el.children.length>40)el.lastChild.remove();
@@ -1033,6 +1048,37 @@ $("#profilePhotoInput")?.addEventListener("change",async e=>{const file=e.target
   if($("#page-feed")?.classList.contains("active")) await loadFeed();
   toast("Profile photo updated. Your picture is now shown across PEOKONECT.");
 }catch(err){toast(err.message);}finally{e.target.value="";}});
+$("#galleryVideoForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = form.querySelector('button[type="submit"]');
+  if (button.disabled) return;
+  const video = form.elements.video.files[0];
+  const thumbnail = form.elements.thumbnail.files[0];
+  const status = $("#galleryVideoStatus");
+  if (!video) return;
+  if (video.size > 100 * 1024 * 1024 || thumbnail?.size > 8 * 1024 * 1024) {
+    status.textContent = "Choose a video up to 100 MB and a thumbnail up to 8 MB.";
+    return;
+  }
+
+  const data = new FormData();
+  data.append("video", video);
+  if (thumbnail) data.append("thumbnail", thumbnail);
+  button.disabled = true;
+  status.textContent = "Uploading and processing video…";
+  try {
+    await api("/users/profile/gallery/video", { method: "POST", body: data });
+    form.reset();
+    status.textContent = "Video added to your profile gallery.";
+    await loadGallery(state.user._id, true);
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
+
 $("#galleryFiles")?.addEventListener("change",e=>{$("#gallerySelection").textContent=e.target.files.length?`${e.target.files.length} photo(s) selected`:"No photos selected";});
 $("#galleryUploadForm")?.addEventListener("submit", async e => {
     e.preventDefault();
@@ -1395,7 +1441,16 @@ updateAuthUI();
 const initialPage =
   document.body.dataset.currentPage || "home";
 
-showPage(initialPage);
+const requestedProfile = initialPage === "profile"
+  ? new URLSearchParams(location.search).get("user")
+  : null;
+
+if (requestedProfile) {
+  showPage("public-profile");
+  openPublicProfile(requestedProfile);
+} else {
+  showPage(initialPage);
+}
 
 // Fetch connection count independently of the current page
 if (state.token) {
@@ -1441,14 +1496,14 @@ async function loadPremium() {
     const yearly = plans.plans.find(p => p.id === "yearly");
     area.innerHTML = `
       <section class="premium-hero">
-        <span class="premium-kicker">♛ THE PEOKONECT EXPERIENCE</span>
+        <span class="premium-kicker"><span class="premium-crown" aria-hidden="true"></span> THE PEOKONECT EXPERIENCE</span>
         <h1>PEOKONECT <em>Premium</em></h1>
         <p>More visibility. Deeper insights. More meaningful connections.</p>
       </section>
-      ${active ? `<div class="premium-status"><strong>♛ Your Premium membership is active</strong><span>Renews/ends: ${sub.subscription.expiryDate ? new Date(sub.subscription.expiryDate).toLocaleDateString() : "Managed by Flutterwave"}</span><button id="cancelPremium" class="btn btn-outline" ${sub.subscription.cancelAtPeriodEnd?"disabled":""}>${sub.subscription.cancelAtPeriodEnd?"Auto-renewal cancelled":"Cancel automatic renewal"}</button></div>` : ""}
+      ${active ? `<div class="premium-status"><strong><span class="premium-crown" aria-hidden="true"></span> Your Premium membership is active</strong><span>Renews/ends: ${sub.subscription.expiryDate ? new Date(sub.subscription.expiryDate).toLocaleDateString() : "Managed by Flutterwave"}</span><button id="cancelPremium" class="btn btn-outline" ${sub.subscription.cancelAtPeriodEnd?"disabled":""}>${sub.subscription.cancelAtPeriodEnd?"Auto-renewal cancelled":"Cancel automatic renewal"}</button></div>` : ""}
       <div class="premium-pricing">
         <article class="premium-plan free-plan"><span class="plan-symbol">○</span><h2>Free Membership</h2><p>Enjoy the essentials and get started.</p><div class="plan-price">₦0 <small>/ forever</small></div><div class="current-plan">${state.token && !active ? "Your current plan" : "Available to everyone"}</div><ul>${["Create your account and profile","Browse community posts","Like and comment on posts","Connect with other users","Send and receive messages","Upload profile and gallery photos"].map(x=>`<li>✓ ${x}</li>`).join("")}</ul></article>
-        <article class="premium-plan gold-plan"><span class="popular-label">BEST EXPERIENCE</span><span class="plan-symbol">♛</span><h2>Premium Membership</h2><p>Unlock the complete PEOKONECT experience.</p><div class="billing-choice"><button class="billing-option selected" data-plan="monthly">Monthly</button><button class="billing-option" data-plan="yearly">Yearly <small>Save 20%</small></button></div><div class="plan-price" id="premiumPrice">₦${monthly.amount.toLocaleString("en-NG")} <small>/ month</small></div><p class="billing-note" id="premiumBillingNote">Billed monthly. Automatic renewal; cancel anytime.</p><button class="btn premium-cta" id="subscribePremium" ${active?"disabled":""}>${active?"You are a Premium member":"♛ Upgrade to Premium"}</button><ul>${PREMIUM_FEATURES.map(x=>`<li><b>✓</b> ${x}</li>`).join("")}</ul><small class="secure-note">Secure recurring card payments powered by Flutterwave.</small></article>
+        <article class="premium-plan gold-plan"><span class="popular-label">BEST EXPERIENCE</span><span class="plan-symbol"><span class="premium-crown" aria-hidden="true"></span></span><h2>Premium Membership</h2><p>Unlock the complete PEOKONECT experience.</p><div class="billing-choice"><button class="billing-option selected" data-plan="monthly">Monthly</button><button class="billing-option" data-plan="yearly">Yearly <small>Save 20%</small></button></div><div class="plan-price" id="premiumPrice">₦${monthly.amount.toLocaleString("en-NG")} <small>/ month</small></div><p class="billing-note" id="premiumBillingNote">Billed monthly. Automatic renewal; cancel anytime.</p><button class="btn premium-cta" id="subscribePremium" ${active?"disabled":""}>${active?"You are a Premium member":'<span class="premium-crown" aria-hidden="true"></span> Upgrade to Premium'}</button><ul>${PREMIUM_FEATURES.map(x=>`<li><b>✓</b> ${x}</li>`).join("")}</ul><small class="secure-note">Secure recurring card payments powered by Flutterwave.</small></article>
       </div>
       <section class="premium-tools"><h2>Your Premium benefits</h2><div class="premium-tool-grid"><button class="premium-tool" data-premium-tool="viewers">👁 <strong>Profile viewers</strong><span>See who visited your profile</span></button><button class="premium-tool" data-premium-tool="likes">♡ <strong>Profile likes</strong><span>See who liked your profile</span></button></div><div id="premiumResults"></div></section>
       <p class="premium-terms">Yearly plan: ₦17,856 per year (20% less than 12 monthly payments). Recurring subscriptions are charged to the card used at checkout through the Flutterwave payment plan. Access remains active for the paid period. You can cancel future renewal; refunds are subject to PEOKONECT's refund policy.</p>`;
@@ -1463,7 +1518,7 @@ async function loadPremium() {
       if (!state.token) { openAuth("login"); return; }
       const button = $("#subscribePremium"); button.disabled = true; button.textContent = "Preparing secure checkout…";
       try { const result = await api("/premium/checkout", { method: "POST", body: JSON.stringify({ plan: selected }) }); window.location.href = result.checkoutUrl; }
-      catch (e) { toast(e.message); button.disabled = false; button.textContent = "♛ Upgrade to Premium"; }
+      catch (e) { toast(e.message); button.disabled = false; button.innerHTML = '<span class="premium-crown" aria-hidden="true"></span> Upgrade to Premium'; }
     });
     $("#cancelPremium")?.addEventListener("click", async () => {
       if (!confirm("Cancel automatic renewal? Your Premium access remains until the current paid period ends.")) return;
@@ -1874,7 +1929,7 @@ async function startOutgoingCall(userId, name, photo, type) {
       type !== "video"
     );
 
-    callStatus("Ringing...");
+    callStatus("Calling…");
     callOverlay(true);
 
     // Server performs another independent connection check.
@@ -1901,11 +1956,17 @@ async function startOutgoingCall(userId, name, photo, type) {
 
 
 async function acceptIncomingCall() {
-  const call = state.call;if (!call || call.initiator) return;
+  const call = state.call;if (!call || call.initiator || !call.ringing) return;
+  stopCallSound();
   try {
     const ice = await api("/calls/ice-config").catch(() => null);
     if (ice?.iceServers?.length) rtcConfig = { iceServers: ice.iceServers };
-    call.localStream = await acquireCallMedia(call.type);
+    const stream = await acquireCallMedia(call.type);
+    if (state.call !== call || call.finished) {
+      stream.getTracks().forEach(track => track.stop());
+      return;
+    }
+    call.localStream = stream;
     $("#localCallVideo").srcObject = call.localStream;
     $("#localCallVideo").classList.toggle("hidden", call.type !== "video");
     $("#callAcceptBtn").classList.add("hidden");$("#callRejectBtn").classList.add("hidden");
@@ -1913,7 +1974,7 @@ async function acceptIncomingCall() {
     callStatus("Connecting…");callOverlay(true);
     callPeerConnection();
     state.socket.emit("call:accept", { callId: call.id });
-  } catch (error) { toast(error.message || "Could not access your microphone or camera."); state.socket?.emit("call:reject", { callId: call.id }); cleanupCall(false); }
+  } catch (error) { if (state.call !== call || call.finished) return; toast(error.message || "Could not access your microphone or camera."); state.socket?.emit("call:reject", { callId: call.id }); cleanupCall(false); }
 }
 async function handleCallSignal({ callId, signal }) {
   const call = state.call;if (!call || call.id !== callId || !signal) return;
@@ -1942,8 +2003,63 @@ async function createCallOffer() {
     callStatus("Connecting…");
   } catch(error) { console.error(error);toast("Could not start the call."); }
 }
+let callAudioContext;
+let callRingSource;
+
+function unlockCallSound() {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return;
+  try {
+    callAudioContext ||= new AudioContext();
+    if (callAudioContext.state === "suspended") {
+      callAudioContext.resume().catch(() => {});
+    }
+  } catch {
+    // Calls still work when the browser cannot play a ringtone.
+  }
+}
+
+document.addEventListener("pointerup", unlockCallSound, { once: true });
+document.addEventListener("keydown", unlockCallSound, { once: true });
+
+function startCallSound(call) {
+  if (!call.ringing || callRingSource || !callAudioContext) return;
+  try {
+    const context = callAudioContext;
+    const rate = context.sampleRate;
+    const buffer = context.createBuffer(1, rate * 3, rate);
+    const samples = buffer.getChannelData(0);
+    const notes = call.type === "video" ? [587, 784] : [440, 554];
+    for (const [index, frequency] of notes.entries()) {
+      const offset = Math.round(rate * index * 0.32);
+      for (let sample = 0; sample < rate * 0.25; sample++) {
+        const time = sample / rate;
+        const envelope = Math.min(time / 0.025, (0.25 - time) / 0.05, 1);
+        samples[offset + sample] = 0.16 * envelope * Math.sin(2 * Math.PI * frequency * time);
+      }
+    }
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    source.connect(context.destination);
+    source.start();
+    callRingSource = source;
+  } catch {
+    // The visible ringing status works independently of audio.
+  }
+}
+
+function stopCallSound() {
+  if (state.call) state.call.ringing = false;
+  if (!callRingSource) return;
+  callRingSource.stop();
+  callRingSource.disconnect();
+  callRingSource = null;
+}
+
 function cleanupCall(notify = true) {
   const call=state.call;
+  stopCallSound();
   if (call && notify) state.socket?.emit("call:end",{callId:call.id});
   if (call?.pc) { call.pc.ontrack=null;call.pc.close(); }
   call?.localStream?.getTracks().forEach(track=>track.stop());
@@ -1955,25 +2071,52 @@ function setupCallSocketEvents() {
   if(!state.socket)return;
   state.socket.on("call:incoming", data => {
     if(state.call){state.socket.emit("call:reject",{callId:data.callId});return;}
-    state.call={id:data.callId,peerId:String(data.callerId),peerName:data.callerName||"PEOKONECT member",type:data.mediaType,initiator:false,localStream:null,pc:null,pendingIce:[]};
+    state.call={id:data.callId,peerId:String(data.callerId),peerName:data.callerName||"PEOKONECT member",type:data.mediaType,initiator:false,ringing:true,localStream:null,pc:null,pendingIce:[]};
     $("#callTitle").textContent=`Incoming ${data.mediaType} call`;
     $("#callAvatar").textContent=(state.call.peerName[0]||"R").toUpperCase();
     $("#localCallVideo").classList.add("hidden");$("#remoteCallVideo").classList.add("hidden");
     $("#callAcceptBtn").classList.remove("hidden");$("#callRejectBtn").classList.remove("hidden");$("#callEndBtn").classList.add("hidden");
     $("#callCameraBtn").classList.toggle("hidden",data.mediaType!=="video");
     callStatus(`${data.callerName} is calling you`);callOverlay(true);
+    startCallSound(state.call);
     try { if (navigator.vibrate) navigator.vibrate([250,150,250]); } catch {}
   });
-  state.socket.on("call:ringing",()=>callStatus("Ringing…"));
-  state.socket.on("call:accepted",()=>createCallOffer());
-  state.socket.on("call:signal",handleCallSignal);
-  state.socket.on("call:rejected",()=>{callStatus("Call declined.");setTimeout(()=>cleanupCall(false),900);});
-  state.socket.on("call:ended",()=>{callStatus("Call ended.");setTimeout(()=>cleanupCall(false),500);});
+  state.socket.on("call:ringing", ({ callId }) => {
+    const call = state.call;
+    if (call?.id !== callId || !call.initiator || call.finished) return;
+    call.ringing = true;
+    callStatus("Ringing…");
+    startCallSound(call);
+  });
+  state.socket.on("call:accepted", ({ callId }) => {
+    if (state.call?.id !== callId || state.call.finished) return;
+    stopCallSound();
+    createCallOffer();
+  });
+  state.socket.on("call:signal", handleCallSignal);
+
+  function finishCall(callId, message) {
+    const call = state.call;
+    if (call?.id !== callId) return;
+    call.finished = true;
+    stopCallSound();
+    callStatus(message);
+    setTimeout(() => {
+      if (state.call === call) cleanupCall(false);
+    }, 700);
+  }
+
+  state.socket.on("call:rejected", ({ callId }) => finishCall(callId, "Call declined."));
+  state.socket.on("call:ended", ({ callId, reason }) => {
+    finishCall(callId, reason === "no-answer" ? "No answer." : "Call ended.");
+  });
   state.socket.on("call:error",data=>{toast(data.message||"Call could not be started.");cleanupCall(false);});
+  state.socket.on("disconnect", () => { if (state.call) cleanupCall(false); });
 }
 document.addEventListener("click", async event => {
   const callButton=event.target.closest("[data-call-type]");
   if(callButton){
+    unlockCallSound();
     const type=callButton.dataset.callType;
     const userId=callButton.dataset.callUser||state.activeConversation?.id;
     const name=callButton.dataset.callName||state.activeConversation?.name||"Member";
@@ -1998,8 +2141,8 @@ document.addEventListener("click", async event => {
 
 
 
-async function uploadChatMedia(file) {
-  if (!file || !state.activeConversation) return;
+async function uploadChatMedia(file, recipientId = state.activeConversation?.id) {
+  if (!file || !recipientId) return;
 
   if (state.chatMediaUploading) {
     toast("Please wait for the current media upload to finish.");
@@ -2083,13 +2226,13 @@ async function uploadChatMedia(file) {
 
   progressRow.append(title, status, progressTrack, percentage);
 
-  if (container) {
+  if (container && state.activeConversation?.id === recipientId) {
     container.append(progressRow);
     container.scrollTop = container.scrollHeight;
   }
 
   const form = new FormData();
-  form.append("recipientId", state.activeConversation.id);
+  form.append("recipientId", recipientId);
   form.append("media", file);
 
   try {
@@ -2157,7 +2300,7 @@ async function uploadChatMedia(file) {
     status.textContent = "Sent successfully!";
     progressRow.classList.add("upload-complete");
 
-    appendMessage(result.message);
+    if (state.activeConversation?.id === recipientId) appendMessage(result.message);
     await loadConversations();
 
     setTimeout(() => progressRow.remove(), 1200);
@@ -2226,6 +2369,7 @@ document.addEventListener("click", function(event) {
   const attachButton = event.target.closest("#chatAttachBtn");
 
   if (!attachButton) return;
+  if (state.voiceRecording) return toast("Finish sending your voice message before attaching a file.");
 
   document.getElementById("chatMediaInput")?.click();
 });
@@ -2234,23 +2378,102 @@ document.addEventListener("change",event=>{
     const file=event.target.files?.[0];if(file)uploadChatMedia(file);event.target.value="";
   }
 });
-document.addEventListener("click",async event=>{
-  const recordButton=event.target.closest("#recordVoiceBtn");if(!recordButton)return;
-  if(state.voiceRecorder?.state==="recording"){state.voiceRecorder.stop();recordButton.textContent="🎙";return;}
-  if(!state.activeConversation)return toast("Open a conversation first.");
-  if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder)return toast("Voice recording is not supported in this browser.");
-  try{
-    state.voiceStream=await navigator.mediaDevices.getUserMedia({audio:true});
-    const chunks=[];state.voiceRecorder=new MediaRecorder(state.voiceStream);
-    state.voiceRecorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
-    state.voiceRecorder.onstop=async()=>{
-      const blob=new Blob(chunks,{type:state.voiceRecorder.mimeType||"audio/webm"});
-      const file=new File([blob],`voice-message-${Date.now()}.webm`,{type:blob.type});
-      state.voiceStream?.getTracks().forEach(t=>t.stop());state.voiceStream=null;
-      await uploadChatMedia(file);
-    };
-    state.voiceRecorder.start();recordButton.textContent="■ Stop";
-  }catch(error){toast(error.message||"Microphone permission was not granted.");}
+const voiceRecordingFormats = {
+  "audio/webm": "webm",
+  "audio/mp4": "m4a",
+  "audio/ogg": "ogg"
+};
+
+function setVoiceRecordButton(button, label, recording, disabled) {
+  button.title = label;
+  button.setAttribute("aria-label", label);
+  button.classList.toggle("is-recording", recording);
+  button.disabled = disabled;
+}
+
+document.addEventListener("click", async event => {
+  const button = event.target.closest("#recordVoiceBtn");
+  if (!button) return;
+
+  const currentRecording = state.voiceRecording;
+  if (currentRecording) {
+    if (currentRecording.recorder?.state === "recording") {
+      setVoiceRecordButton(button, "Sending voice message", false, true);
+      currentRecording.recorder.stop();
+    }
+    return;
+  }
+
+  const recipientId = state.activeConversation?.id;
+  if (!recipientId) return toast("Open a conversation first.");
+  if (state.chatMediaUploading) return toast("Please wait for the current media upload to finish.");
+  if (!window.isSecureContext) return toast("Open Peokonect over HTTPS to record a voice message.");
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    return toast("Voice recording is not supported in this browser.");
+  }
+
+  const recording = { recorder: null };
+  state.voiceRecording = recording;
+  setVoiceRecordButton(button, "Waiting for microphone permission", false, true);
+
+  let stream;
+  const cleanup = () => {
+    stream?.getTracks().forEach(track => track.stop());
+    if (state.voiceRecording !== recording) return;
+    state.voiceRecording = null;
+    setVoiceRecordButton(button, "Record voice message", false, false);
+  };
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (state.activeConversation?.id !== recipientId) {
+      cleanup();
+      return toast("The conversation changed. Tap the microphone to record again.");
+    }
+
+    const preferredType = Object.keys(voiceRecordingFormats)
+      .find(type => MediaRecorder.isTypeSupported?.(type));
+    const recorder = preferredType
+      ? new MediaRecorder(stream, { mimeType: preferredType })
+      : new MediaRecorder(stream);
+    recording.recorder = recorder;
+    const chunks = [];
+
+    recorder.addEventListener("dataavailable", event => {
+      if (event.data.size) chunks.push(event.data);
+    });
+    recorder.addEventListener("error", () => {
+      cleanup();
+      toast("Recording failed. Try again.");
+    });
+    recorder.addEventListener("stop", async () => {
+      if (state.voiceRecording !== recording) return;
+      stream.getTracks().forEach(track => track.stop());
+      try {
+        if (!chunks.length) return toast("No audio was recorded. Try again.");
+        const type = (chunks[0].type || recorder.mimeType || preferredType || "")
+          .split(";")[0].trim().toLowerCase();
+        const extension = voiceRecordingFormats[type];
+        if (!extension) return toast("This browser recorded an unsupported audio format.");
+
+        const file = new File(chunks, `voice-message-${Date.now()}.${extension}`, { type });
+        await uploadChatMedia(file, recipientId);
+      } finally {
+        cleanup();
+      }
+    });
+
+    recorder.start();
+    setVoiceRecordButton(button, "Stop recording and send", true, false);
+  } catch (error) {
+    cleanup();
+    const message = error.name === "NotAllowedError"
+      ? "Allow microphone access in your browser and try again."
+      : error.name === "NotFoundError"
+        ? "No microphone was found. Connect one and try again."
+        : "Could not start voice recording. Check your microphone and try again.";
+    toast(message);
+  }
 });
 
 

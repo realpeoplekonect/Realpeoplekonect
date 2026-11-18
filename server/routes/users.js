@@ -409,10 +409,85 @@ router.post(
 
 
 
+const maxGalleryVideoSize = 100 * 1024 * 1024;
+const galleryVideoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: maxGalleryVideoSize + 1, files: 2, fields: 0 },
+  fileFilter: (_req, file, callback) => {
+    const allowed = file.fieldname === "video"
+      ? ["video/mp4", "video/webm", "video/quicktime"]
+      : ["image/jpeg", "image/png", "image/webp"];
+    if (allowed.includes(file.mimetype)) return callback(null, true);
+    callback(new Error(file.fieldname === "video"
+      ? "Choose an MP4, WebM or MOV video."
+      : "Choose a JPG, PNG or WebP thumbnail."));
+  }
+}).fields([{ name: "video", maxCount: 1 }, { name: "thumbnail", maxCount: 1 }]);
+
+router.post("/profile/gallery/video", protect, (req, res, next) => {
+  galleryVideoUpload(req, res, error => {
+    if (error?.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({ message: "Videos must be 100 MB or smaller and thumbnails must be 8 MB or smaller." });
+    }
+    if (error) return res.status(400).json({ message: error.message });
+    next();
+  });
+}, async (req, res) => {
+  const video = req.files?.video?.[0];
+  const thumbnail = req.files?.thumbnail?.[0];
+  if (!video) return res.status(400).json({ message: "Choose a video first." });
+  if (video.size > maxGalleryVideoSize) {
+    return res.status(413).json({ message: "The video must be 100 MB or smaller." });
+  }
+  if (thumbnail && thumbnail.size > 8 * 1024 * 1024) {
+    return res.status(413).json({ message: "The thumbnail must be 8 MB or smaller." });
+  }
+  if (!cloudinaryReady(res)) return;
+
+  let uploadedVideo;
+  let uploadedThumbnail;
+  try {
+    uploadedVideo = await new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        { folder: "peokonect/profile-gallery", resource_type: "video", format: "mp4",
+          transformation: [{ video_codec: "h264", audio_codec: "aac" }] },
+        (error, result) => error ? reject(error) : resolve(result)
+      ).end(video.buffer);
+    });
+    if (!uploadedVideo?.secure_url || !uploadedVideo.public_id) throw new Error("Missing video upload result.");
+    if (thumbnail) uploadedThumbnail = await uploadImage(thumbnail.buffer, "peokonect/profile-gallery");
+
+    const item = await GalleryPhoto.create({
+      owner: req.user._id,
+      video: uploadedVideo.secure_url,
+      videoPublicId: uploadedVideo.public_id,
+      thumbnail: uploadedThumbnail?.secure_url,
+      thumbnailPublicId: uploadedThumbnail?.public_id
+    });
+    return res.status(201).json({ item });
+  } catch (error) {
+    console.error("GALLERY VIDEO UPLOAD ERROR:", error);
+    await Promise.allSettled([
+      uploadedVideo?.public_id && cloudinary.uploader.destroy(uploadedVideo.public_id, { resource_type: "video" }),
+      uploadedThumbnail?.public_id && cloudinary.uploader.destroy(uploadedThumbnail.public_id)
+    ]);
+    return res.status(500).json({ message: "Could not upload the gallery video. Try again." });
+  }
+});
+
 router.get("/:id/gallery", async (req, res) => { const owner = await User.findById(req.params.id).select("_id"); if (!owner) return res.status(404).json({ message: "Profile not found." }); const photos = await GalleryPhoto.find({ owner: owner._id }).populate("owner", "name photo").populate("comments.user", "name photo").sort({ createdAt: -1 }).limit(100); res.json({ photos }); });
 router.post("/gallery/:photoId/like", protect, async (req, res) => { const photo = await GalleryPhoto.findById(req.params.photoId); if (!photo) return res.status(404).json({ message: "Photo not found." }); const uid = String(req.user._id); const liked = photo.likes.some(id => String(id) === uid); photo.likes = liked ? photo.likes.filter(id => String(id) !== uid) : [...photo.likes, req.user._id]; await photo.save(); res.json({ liked: !liked, likes: photo.likes.length }); });
 router.post("/gallery/:photoId/comments", protect, async (req, res) => { const text = String(req.body.text || "").trim(); if (!text) return res.status(400).json({ message: "Write a comment first." }); const photo = await GalleryPhoto.findById(req.params.photoId); if (!photo) return res.status(404).json({ message: "Photo not found." }); photo.comments.push({ user: req.user._id, text: text.slice(0, 500) }); await photo.save(); await photo.populate("comments.user", "name photo"); res.json({ comments: photo.comments }); });
-router.delete("/gallery/:photoId", protect, async (req, res) => { const photo = await GalleryPhoto.findOne({ _id: req.params.photoId, owner: req.user._id }); if (!photo) return res.status(404).json({ message: "Photo not found or you do not own it." }); if (photo.imagePublicId) await cloudinary.uploader.destroy(photo.imagePublicId).catch(() => {}); await photo.deleteOne(); res.json({ message: "Photo removed from your gallery." }); });
+router.delete("/gallery/:photoId", protect, async (req, res) => {
+  const item = await GalleryPhoto.findOneAndDelete({ _id: req.params.photoId, owner: req.user._id });
+  if (!item) return res.status(404).json({ message: "Gallery item not found or you do not own it." });
+  await Promise.allSettled([
+    item.imagePublicId && cloudinary.uploader.destroy(item.imagePublicId),
+    item.videoPublicId && cloudinary.uploader.destroy(item.videoPublicId, { resource_type: "video" }),
+    item.thumbnailPublicId && cloudinary.uploader.destroy(item.thumbnailPublicId)
+  ]);
+  res.json({ message: "Item removed from your gallery." });
+});
 
 router.post("/:id/connect", protect, async (req, res) => {
   if (String(req.user._id) === req.params.id) return res.status(400).json({ message: "You cannot connect with yourself." });

@@ -2012,7 +2012,9 @@ function unlockCallSound() {
   try {
     callAudioContext ||= new AudioContext();
     if (callAudioContext.state === "suspended") {
-      callAudioContext.resume().catch(() => {});
+      callAudioContext.resume().then(() => startCallSound(state.call)).catch(() => {});
+    } else {
+      startCallSound(state.call);
     }
   } catch {
     // Calls still work when the browser cannot play a ringtone.
@@ -2023,19 +2025,34 @@ document.addEventListener("pointerup", unlockCallSound, { once: true });
 document.addEventListener("keydown", unlockCallSound, { once: true });
 
 function startCallSound(call) {
-  if (!call.ringing || callRingSource || !callAudioContext) return;
+  if (!call?.ringing || callRingSource || callAudioContext?.state !== "running") return;
   try {
     const context = callAudioContext;
     const rate = context.sampleRate;
     const buffer = context.createBuffer(1, rate * 3, rate);
     const samples = buffer.getChannelData(0);
-    const notes = call.type === "video" ? [587, 784] : [440, 554];
-    for (const [index, frequency] of notes.entries()) {
-      const offset = Math.round(rate * index * 0.32);
-      for (let sample = 0; sample < rate * 0.25; sample++) {
-        const time = sample / rate;
-        const envelope = Math.min(time / 0.025, (0.25 - time) / 0.05, 1);
-        samples[offset + sample] = 0.16 * envelope * Math.sin(2 * Math.PI * frequency * time);
+    if (call.initiator) {
+      const notes = call.type === "video" ? [587, 784] : [440, 554];
+      for (const [index, frequency] of notes.entries()) {
+        const offset = Math.round(rate * index * 0.32);
+        for (let sample = 0; sample < rate * 0.25; sample++) {
+          const time = sample / rate;
+          const envelope = Math.min(time / 0.025, (0.25 - time) / 0.05, 1);
+          samples[offset + sample] = 0.16 * envelope * Math.sin(2 * Math.PI * frequency * time);
+        }
+      }
+    } else {
+      // Two short bursts of alternating bell strikes, like a classic telephone.
+      for (const [index, start] of [0, 0.09, 0.18, 0.53, 0.62, 0.71].entries()) {
+        const offset = Math.round(start * rate);
+        const frequency = index % 2 === 0 ? 880 : 1175;
+        for (let sample = 0; sample < rate * 0.22; sample++) {
+          const time = sample / rate;
+          const envelope = Math.min(time / 0.004, (0.22 - time) / 0.025, 1);
+          const phase = 2 * Math.PI * frequency * time;
+          const bell = Math.sin(phase) + 0.28 * Math.sin(phase * 2.4);
+          samples[offset + sample] += 0.55 * envelope * Math.exp(-time * 18) * bell;
+        }
       }
     }
     const source = context.createBufferSource();

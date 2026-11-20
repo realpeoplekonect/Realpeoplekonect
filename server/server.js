@@ -11,6 +11,7 @@ const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const User = require("./models/User");
 const Activity = require("./models/Activity");
+const Message = require("./models/Message");
 const authRoutes = require("./routes/auth");
 const postRoutes = require("./routes/posts");
 const userRoutes = require("./routes/users");
@@ -28,6 +29,8 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: process.env.CLIENT_URL || true }));
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
+app.use("/share/post", require("./routes/sharedPost"));
+app.use("/share/gallery", require("./routes/sharedPost"));
 app.use("/api", rateLimit({ windowMs: 15 * 60 * 1000, limit: 300 }));
 // Social preview page: gives WhatsApp/Facebook/etc. a profile title, description and image.
 app.get("/share/profile/:id", async (req, res) => {
@@ -64,12 +67,34 @@ app.get("/api/calls/ice-config", protect, (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/premium", premiumRoutes.router);
 app.use("/api/posts", postRoutes);
+app.use("/api/news", require("./routes/news"));
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/messages", messageRoutes);
 
 const onlineUsers = new Map();
 const activeCalls = new Map();
+
+// One server-owned finalization path prevents duplicate chat history entries.
+async function finishCall(call, reason) {
+  if (activeCalls.get(call.callId) !== call) return;
+  activeCalls.delete(call.callId);
+  const connected = call.status === "connected";
+  const outcome = connected ? (reason === "disconnected" ? "disconnected" : "completed")
+    : reason === "rejected" ? "declined" : reason === "cancelled" ? "cancelled" : "missed";
+  const durationSeconds = connected ? Math.max(0, Math.floor((Date.now() - call.acceptedAt) / 1000)) : 0;
+  io.to(call.callerId).to(call.recipientId).emit("call:ended", { callId: call.callId, reason });
+  try {
+    const message = await Message.create({
+      sender: call.callerId, recipient: call.recipientId,
+      text: `${call.mediaType === "video" ? "Video" : "Audio"} call · ${outcome}`,
+      callLog: { kind: call.mediaType, outcome, durationSeconds }
+    });
+    io.to(call.callerId).to(call.recipientId).emit("message:new", message.toObject());
+  } catch (error) {
+    console.error("CALL HISTORY ERROR:", error.message);
+  }
+}
 
 
 // ============================================
@@ -216,15 +241,8 @@ socket.on("call:initiate", async ({
       return;
     }
 
-    // Recipient must be online.
-    if (!onlineUsers.has(String(recipientId))) {
-      socket.emit("call:error", {
-        message: "This member is currently offline."
-      });
-      return;
-    }
-
     // Create call session.
+    if (activeCalls.has(String(callId))) return;
     const session = {
       callId: String(callId),
       callerId: id,
@@ -236,11 +254,14 @@ socket.on("call:initiate", async ({
 
     activeCalls.set(String(callId), session);
 
+    if (!onlineUsers.has(String(recipientId))) {
+      await finishCall(session, "no-answer");
+      return;
+    }
+
     setTimeout(() => {
       if (activeCalls.get(session.callId) !== session || session.status !== "ringing") return;
-      activeCalls.delete(session.callId);
-      const event = { callId: session.callId, reason: "no-answer" };
-      io.to(session.callerId).to(session.recipientId).emit("call:ended", event);
+      void finishCall(session, "no-answer");
     }, 35000).unref();
 
     // Notify recipient.
@@ -288,10 +309,11 @@ socket.on("call:accept", async ({ callId } = {}) => {
     socket.emit("call:error", {
       message: "You must be accepted connections before calling."
     });
-    activeCalls.delete(call.callId);
+    await finishCall(call, "cancelled");
     return;
   }
   call.status = "connected";
+  call.acceptedAt = Date.now();
   io.to(call.callerId).emit("call:accepted", {
     callId: call.callId
   });
@@ -300,9 +322,8 @@ socket.on("call:accept", async ({ callId } = {}) => {
 
   socket.on("call:reject", ({ callId } = {}) => {
     const call = activeCalls.get(String(callId));
-    if (!call || call.recipientId !== id) return;
-    io.to(call.callerId).emit("call:rejected", { callId: call.callId, reason: "rejected" });
-    activeCalls.delete(call.callId);
+    if (!call || call.recipientId !== id || call.status !== "ringing") return;
+    void finishCall(call, "rejected");
   });
 
  
@@ -328,6 +349,7 @@ socket.on("call:signal", async ({ callId, signal } = {}) => {
     call.callerId,
     call.recipientId
   );
+  if (activeCalls.get(call.callId) !== call) return;
   if (!allowed) {
     io.to(call.callerId).emit("call:error", {
       message: "Connection ended. Call stopped."
@@ -335,7 +357,7 @@ socket.on("call:signal", async ({ callId, signal } = {}) => {
     io.to(call.recipientId).emit("call:error", {
       message: "Connection ended. Call stopped."
     });
-    activeCalls.delete(call.callId);
+    await finishCall(call, "disconnected");
     return;
   }
   io.to(otherId).emit("call:signal", {
@@ -347,17 +369,14 @@ socket.on("call:signal", async ({ callId, signal } = {}) => {
   socket.on("call:end", ({ callId } = {}) => {
     const call = activeCalls.get(String(callId));
     if (!call || ![call.callerId, call.recipientId].includes(id)) return;
-    const otherId = call.callerId === id ? call.recipientId : call.callerId;
-    io.to(otherId).emit("call:ended", { callId: call.callId });
-    activeCalls.delete(call.callId);
+    void finishCall(call, call.status === "ringing" ? "cancelled" : "ended");
   });
 
   socket.on("disconnect", async () => {
-    for (const [callId, call] of activeCalls.entries()) {
+    if (onlineUsers.get(id) !== socket.id) return;
+    for (const call of activeCalls.values()) {
       if (call.callerId === id || call.recipientId === id) {
-        const otherId = call.callerId === id ? call.recipientId : call.callerId;
-        io.to(otherId).emit("call:ended", { callId, reason: "disconnected" });
-        activeCalls.delete(callId);
+        void finishCall(call, "disconnected");
       }
     }
     if (onlineUsers.get(id) === socket.id) {

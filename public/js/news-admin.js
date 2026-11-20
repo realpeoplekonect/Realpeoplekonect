@@ -1,6 +1,7 @@
-(() => {
+function initializeNewsAdmin() {
   const form = document.getElementById("newsAdminForm");
-  if (!form) return;
+  if (!form || form.dataset.newsInitialized || !state.token || !["admin","news_editor"].includes(state.user?.role)) return;
+  form.dataset.newsInitialized = "true";
   const list = document.getElementById("newsAdminList");
   const status = document.getElementById("newsAdminStatus");
   const preview = document.getElementById("newsMediaPreview");
@@ -71,7 +72,7 @@
         else { thumb.textContent = "TEXT"; }
         const info = document.createElement("div"); info.className = "news-admin-info";
         const title = document.createElement("strong"); title.textContent = article.title;
-        const meta = document.createElement("small"); meta.textContent = article.category + " · " + new Date(article.publishedAt).toLocaleString();
+        const meta = document.createElement("small"); meta.textContent = article.category + " · " + new Date(article.publishedAt).toLocaleString() + (article.author?.name ? " · " + article.author.name : "");
         info.append(title,meta);
         const actions = document.createElement("div"); actions.className = "news-admin-actions";
         const edit = document.createElement("button"); edit.type = "button"; edit.className = "btn btn-outline"; edit.textContent = "Edit"; edit.onclick = () => startEdit(article);
@@ -113,5 +114,7 @@
     finally { setBusy(false); }
   });
   // The authenticated API independently enforces the administrator role.
-  if (state.token && state.user?.role === "admin") void load();
-})();
+  void load();
+}
+window.addEventListener("news-editor-ready", initializeNewsAdmin);
+initializeNewsAdmin();

@@ -5,9 +5,9 @@ const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const User = require("../models/User");
 const Activity = require("../models/Activity");
-const { protect } = require("../middleware/auth");
+const { authenticate } = require("../middleware/auth");
 
-const tokenFor = user => jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+const tokenFor = user => jwt.sign({ id: user._id, sessionVersion: user.sessionVersion || 0 }, process.env.JWT_SECRET, { expiresIn: "7d" });
 const publicUser = user => ({
   _id: user._id, name: user.name, email: user.email, age: user.age,
   gender: user.gender, lookingFor: user.lookingFor, bio: user.bio,
@@ -226,7 +226,7 @@ router.post("/reset-password", async (req, res) => {
                 $gt: new Date()
             }
         }).select(
-            "+passwordResetTokenHash +passwordResetExpires +passwordHash"
+            "+passwordResetTokenHash +passwordResetExpires +passwordHash +sessionVersion"
         );
 
         if (!user) {
@@ -234,9 +234,13 @@ router.post("/reset-password", async (req, res) => {
                 message: "This password reset link is invalid or has expired. Please request another link."
             });
         }
+        if (user.role === "news_editor" && (password.length < 12 || Buffer.byteLength(password,"utf8") > 72)) {
+            return res.status(400).json({message:"News editor passwords must be at least 12 characters and at most 72 bytes."});
+        }
 
         // Hash and save the new password.
         user.passwordHash = await bcrypt.hash(password, 12);
+        if (user.role === "news_editor") user.$inc("sessionVersion",1);
 
         // Invalidate the reset link after use.
         user.passwordResetTokenHash = undefined;
@@ -360,7 +364,7 @@ router.post("/resend-verification", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   try {
-    const user = await User.findOne({ email: String(req.body.email || "").trim().toLowerCase() }).select("+passwordHash");
+    const user = await User.findOne({ email: String(req.body.email || "").trim().toLowerCase() }).select("+passwordHash +sessionVersion");
     if (!user || !(await bcrypt.compare(req.body.password || "", user.passwordHash))) return res.status(401).json({ message: "Invalid email or password." });
     if (user.status === "suspended") return res.status(403).json({ message: "This account has been suspended. Contact support." });
     if (user.emailVerificationRequired && !user.isVerified) return res.status(403).json({ message: "Please confirm your email address using the link we sent you before logging in." });
@@ -372,8 +376,12 @@ router.post("/login", async (req, res) => {
   } catch (err) { res.status(500).json({ message: "Login failed.", error: err.message }); }
 });
 
-router.get("/me", protect, (req, res) => res.json({ user: req.user }));
-router.post("/logout", protect, async (req, res) => {
+router.get("/me", authenticate, (req, res) => {
+  const user = req.user.toObject();
+  delete user.sessionVersion;
+  res.json({user});
+});
+router.post("/logout", authenticate, async (req, res) => {
   await Activity.create({ user: req.user._id, type: "logout", detail: "User logged out" });
   req.app.get("io").to("admins").emit("admin:activity", { type: "logout", detail: `${req.user.name} logged out`, createdAt: new Date() });
   res.json({ message: "Logged out." });

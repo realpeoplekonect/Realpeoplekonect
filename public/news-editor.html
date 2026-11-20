@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>News Editor | PEOKONECT</title>
+  <link rel="icon" href="/Images/realpeoplekonekt-logo.png">
+  <link rel="stylesheet" href="/css/styles.css?v=editor-role-1">
+</head>
+<body class="news-editor-page">
+  <header class="topbar">
+    <div class="brand"><img src="/Images/realpeoplekonekt-logo.png" class="brand-logo" alt="PEOKONECT"></div>
+    <strong class="news-editor-label">News editor workspace</strong>
+    <button id="editorLogout" class="btn btn-logout hidden" type="button">Log out</button>
+  </header>
+  <main class="page active">
+    <section id="editorLoginPanel" class="card editor-login-panel">
+      <span class="eyebrow">EDITORIAL TEAM</span><h1>News editor sign in</h1>
+      <p>Use the editorial account provided by your administrator.</p>
+      <form id="editorLoginForm" class="news-admin-form">
+        <label>Email address<input type="email" name="email" required autocomplete="username"></label>
+        <label>Password<input type="password" name="password" required autocomplete="current-password"></label>
+        <button type="submit" class="btn btn-primary">Sign in</button>
+      </form>
+      <p role="status" id="editorLoginStatus" class="news-status"></p>
+      <a href="/index.html">Back to Peokonect</a>
+    </section>
+    <section id="editorWorkspace" class="hidden">
+      <div class="page-heading"><div><span class="eyebrow">EDITORIAL WORKSPACE</span><h1>Manage <em>your news.</em></h1><p id="editorWelcome"></p></div></div>
+      <section class="card news-admin-panel" id="newsAdminPanel">
+        <div class="panel-heading"><div><h2>Manage news</h2></div></div>
+        <p>Publish news, edit your existing stories, or remove them from the public News page.</p>
+        <form id="newsAdminForm" class="news-admin-form">
+          <h3 id="newsFormHeading">Create news story</h3>
+          <label>Headline<input name="title" maxlength="180" required placeholder="Enter the news headline"></label>
+          <label>Category<select name="category"><option value="world">World</option><option value="africa">Africa</option><option value="business">Business</option><option value="technology">Technology</option><option value="sport">Sport</option></select></label>
+          <label>Full story<textarea name="body" rows="7" maxlength="20000" required placeholder="Write the news article…"></textarea></label>
+          <div class="news-admin-media-fields">
+            <label>Photo or video<input name="media" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"><small>Optional · up to 100 MB. Leave blank to retain media when editing.</small></label>
+            <label>Video thumbnail (optional)<input name="thumbnail" type="file" accept="image/jpeg,image/png,image/webp"><small>Up to 10 MB. Automatically generated when not selected.</small></label>
+          </div>
+          <label id="newsRemoveMediaLabel" class="hidden"><span><input type="checkbox" name="removeMedia" value="true"> Remove existing media</span></label>
+          <div id="newsMediaPreview" class="news-media-preview"></div>
+          <div class="news-admin-actions"><button id="newsPublishBtn" type="submit" class="btn btn-primary">Publish news</button><button id="newsCancelEdit" type="button" class="btn btn-outline hidden">Cancel edit</button></div>
+          <p id="newsAdminStatus" role="status" class="news-status"></p>
+        </form>
+        <h3>Your published stories</h3>
+        <div id="newsAdminList" class="news-admin-list" aria-live="polite">Loading stories…</div>
+      </section>
+    </section>
+  </main>
+  <script src="/js/news-editor.js?v=1"></script><script src="/js/news-admin.js?v=editor-role-1"></script>
+</body>
+</html>

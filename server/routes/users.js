@@ -254,7 +254,7 @@ router.get("/:id", async (req, res) => {
     try {
       const jwt = require("jsonwebtoken");
       const decoded = jwt.verify(header.slice(7), process.env.JWT_SECRET);
-      if (String(decoded.id) !== String(user._id)) {
+      if (String(decoded.id) !== String(user._id) && await User.exists({_id:decoded.id,role:{$ne:"news_editor"},status:"active"})) {
         await ProfileView.create({ viewer: decoded.id, viewed: user._id });
       }
     } catch {}

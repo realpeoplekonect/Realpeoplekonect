@@ -4,7 +4,47 @@ const Post = require("../models/Post");
 const Activity = require("../models/Activity");
 const PremiumPayment = require("../models/PremiumPayment");
 const { protect, adminOnly } = require("../middleware/auth");
+const bcrypt = require("bcryptjs");
+const mongoose = require("mongoose");
 router.use(protect, adminOnly);
+
+// Only full administrators can create or suspend editorial staff.
+const editorFields = "name email role status createdAt lastLoginAt";
+router.get("/news-editors", async (_req,res) => {
+  try {
+    const editors = await User.find({role:"news_editor"}).select(editorFields).sort({createdAt:-1});
+    res.json({editors});
+  } catch { res.status(500).json({message:"Could not load news editors."}); }
+});
+router.post("/news-editors", async (req,res) => {
+  const {name,email,password} = req.body || {};
+  const normalizedName = typeof name === "string" ? name.trim() : "";
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  if (!normalizedName || normalizedName.length > 70 || normalizedEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail))
+    return res.status(400).json({message:"Enter a valid name and email address."});
+  if (typeof password !== "string" || password.length < 12 || Buffer.byteLength(password,"utf8") > 72)
+    return res.status(400).json({message:"Use a password of at least 12 characters and at most 72 bytes."});
+  try {
+    const passwordHash = await bcrypt.hash(password,12);
+    const editor = await User.create({name:normalizedName,email:normalizedEmail,passwordHash,role:"news_editor",status:"active",isVerified:true,emailVerificationRequired:false});
+    await Activity.create({user:req.user._id,type:"admin",detail:`Created news editor ${editor.email}`}).catch(()=>{});
+    res.status(201).json({editor:{_id:editor._id,name:editor.name,email:editor.email,role:editor.role,status:editor.status,createdAt:editor.createdAt}});
+  } catch(error) {
+    if (error.code === 11000) return res.status(409).json({message:"An account with that email already exists."});
+    res.status(500).json({message:"Could not create news editor."});
+  }
+});
+router.patch("/news-editors/:id/status", async (req,res) => {
+  const status = req.body?.status;
+  if (!["active","suspended"].includes(status) || !mongoose.isValidObjectId(req.params.id))
+    return res.status(400).json({message:"Invalid editor or status."});
+  try {
+    const editor = await User.findOneAndUpdate({_id:req.params.id,role:"news_editor"},{$set:{status,isOnline:false},$inc:{sessionVersion:1}},{new:true}).select(editorFields);
+    if (!editor) return res.status(404).json({message:"News editor not found."});
+    await Activity.create({user:req.user._id,type:"admin",detail:`${status} news editor ${editor.email}`}).catch(()=>{});
+    res.json({editor});
+  } catch { res.status(500).json({message:"Could not update news editor."}); }
+});
 
 router.get("/overview", async (_req, res) => {
   const [totalUsers, onlineUsers, newToday, totalPosts, recentActivity] = await Promise.all([
@@ -23,7 +63,7 @@ router.get("/users", async (_req, res) => {
 router.patch("/users/:id/status", async (req, res) => {
   const status = req.body.status;
   if (!["active", "suspended"].includes(status)) return res.status(400).json({ message: "Invalid status." });
-  const user = await User.findByIdAndUpdate(req.params.id, { status }, { new: true }).select("name email status");
+  const user = await User.findOneAndUpdate({_id:req.params.id,role:"user"}, { status }, { new: true }).select("name email status");
   if (!user) return res.status(404).json({ message: "User not found." });
   await Activity.create({ user: req.user._id, type: "admin", detail: `${status} account ${user.email}` });
   res.json({ user });

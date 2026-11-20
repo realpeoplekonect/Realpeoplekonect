@@ -447,6 +447,10 @@ function showResetPassword(token) {
 
 function closeAuth(){ $("#authModal").classList.add("hidden"); $("#authForm").reset(); }
 function updateAuthUI(){
+  if (state.token && state.user?.role === "news_editor") {
+    window.location.replace("/news-editor.html");
+    return;
+  }
   if (!$("#mainNav [data-page='news']")) {
     const news = document.createElement("button");
     news.className = "nav-link";
@@ -482,6 +486,10 @@ const PAGE_FILES = {
   premium: "/premium.html"
 };
 function showPage(name){
+  if (state.token && state.user?.role === "news_editor") {
+    window.location.replace("/news-editor.html");
+    return;
+  }
   if(["discover","feed","connections","messages","profile","admin"].includes(name)&&!state.token){
     toast("Please log in to access this page.");
     openAuth("login");
@@ -511,7 +519,7 @@ function showPage(name){
   if(name==="premium")loadPremium();
 }
 function connectSocket(){
-  if(!state.token)return;
+  if(!state.token || state.user?.role === "news_editor")return;
   if(typeof io !== "function") { toast("Calling service is unavailable. Refresh this page and try again."); return; }
   if(state.socket)state.socket.disconnect();
   state.socket=io({auth:{token:state.token}});
@@ -1103,6 +1111,7 @@ $("#authForm")?.addEventListener("submit",async e=>{
     }
     state.token=data.token;state.user=data.user;localStorage.setItem("peokonectToken",state.token);localStorage.setItem("peokonectUser",JSON.stringify(state.user));closeAuth();updateAuthUI();
 
+    if (state.user?.role === "news_editor") { window.location.replace("/news-editor.html"); return; }
     connectSocket();toast("Welcome back!");showPage("discover");
   } catch(err){toast(err.message);}
 

@@ -154,7 +154,7 @@ io.use(async (socket, next) => {
     if (!token) throw new Error("Missing token");
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(payload.id).select("_id name role status");
-    if (!user || user.status !== "active") throw new Error("Account unavailable");
+    if (!user || user.status !== "active" || user.role === "news_editor") throw new Error("Account unavailable for chat");
     socket.user = user;
     next();
   } catch {

@@ -2,8 +2,9 @@ const express = require("express");
 const mongoose = require("mongoose");
 const multer = require("multer");
 const NewsArticle = require("../models/NewsArticle");
+const User = require("../models/User");
 const cloudinary = require("../utils/cloudinary");
-const { protect, adminOnly } = require("../middleware/auth");
+const { authenticate, newsOnly } = require("../middleware/auth");
 const categories = ["world", "africa", "business", "technology", "sport"];
 const publicFields = "title body category mediaType mediaUrl thumbnailUrl publishedAt updatedAt";
 const router = express.Router();
@@ -95,10 +96,15 @@ router.get("/published", async (req,res) => {
     res.set("Cache-Control","no-store").json({articles});
   } catch(error) { errorResponse(res,error); }
 });
-router.use("/admin", protect, adminOnly);
-router.get("/admin", async (_req,res) => {
+router.use("/admin", authenticate, newsOnly);
+const editorFilter = req => req.user.role === "news_editor" ? {author:req.user._id} : {};
+async function verifyEditorStillActive(req) {
+  if (req.user.role === "news_editor" && !await User.exists({_id:req.user._id,role:"news_editor",status:"active",sessionVersion:req.user.sessionVersion || 0}))
+    throw bad("Your editorial session has been revoked.",401);
+}
+router.get("/admin", async (req,res) => {
   try {
-    const articles = await NewsArticle.find().select(publicFields).sort({publishedAt:-1,_id:-1}).lean();
+    const articles = await NewsArticle.find(editorFilter(req)).select(publicFields+" author").populate("author","name").sort({publishedAt:-1,_id:-1}).lean();
     res.set("Cache-Control","no-store").json({articles});
   } catch(error) { errorResponse(res,error); }
 });
@@ -107,6 +113,7 @@ router.post("/admin", upload, async (req,res) => {
   try {
     const data = fields(req.body);
     const media = await mediaFields(req,null,uploaded);
+    await verifyEditorStillActive(req);
     const article = await NewsArticle.create({...data,...media,author:req.user._id});
     res.status(201).json({article});
   } catch(error) { await cleanup(uploaded); errorResponse(res,error); }
@@ -115,11 +122,12 @@ router.patch("/admin/:id", upload, async (req,res) => {
   const uploaded = [];
   try {
     if (!mongoose.isValidObjectId(req.params.id)) throw bad("Story not found.",404);
-    const article = await NewsArticle.findById(req.params.id);
+    const article = await NewsArticle.findOne({_id:req.params.id,...editorFilter(req)});
     if (!article) throw bad("Story not found.",404);
     const old = assets(article);
     const data = fields(req.body);
     const media = await mediaFields(req,article,uploaded);
+    await verifyEditorStillActive(req);
     article.set({...data,...media});
     await article.save();
     const retained = new Set(assets(article).map(item=>item.id));
@@ -130,7 +138,8 @@ router.patch("/admin/:id", upload, async (req,res) => {
 router.delete("/admin/:id", async (req,res) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) throw bad("Story not found.",404);
-    const article = await NewsArticle.findByIdAndDelete(req.params.id);
+    await verifyEditorStillActive(req);
+    const article = await NewsArticle.findOneAndDelete({_id:req.params.id,...editorFilter(req)});
     if (!article) throw bad("Story not found.",404);
     await cleanup(assets(article));
     res.json({message:"Story deleted."});

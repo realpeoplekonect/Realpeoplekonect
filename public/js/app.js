@@ -10,6 +10,66 @@ const $ = s => document.querySelector(s);
 
 
 const $$ = s => [...document.querySelectorAll(s)];
+// Typing presence is separate from saved messages and call state.
+const chatTyping = { recipient: null, lastSent: 0, idleTimer: null, incoming: new Map() };
+function stopChatTyping(notify = true) {
+  clearTimeout(chatTyping.idleTimer);
+  chatTyping.idleTimer = null;
+  if (notify && chatTyping.recipient && state.socket?.connected) {
+    state.socket.emit("typing:update", {recipientId:chatTyping.recipient,typing:false});
+  }
+  chatTyping.recipient = null;
+  chatTyping.lastSent = 0;
+}
+function renderChatTyping() {
+  const indicator = $("#chatTypingStatus"), normal = $("#chatUserStatus");
+  if (!indicator || !normal) return;
+  const visible = chatTyping.incoming.size > 0 && !!state.activeConversation;
+  indicator.classList.toggle("hidden", !visible);
+  normal.classList.toggle("hidden", visible);
+}
+function clearIncomingTyping() {
+  chatTyping.incoming.forEach(timer => clearTimeout(timer));
+  chatTyping.incoming.clear();
+  renderChatTyping();
+}
+function receiveChatTyping(event) {
+  if (!event || String(event.senderId) !== state.activeConversation?.id ||
+      typeof event.sessionId !== "string" || typeof event.typing !== "boolean" ||
+      document.body.dataset.currentPage !== "messages") return;
+  const key = event.sessionId;
+  clearTimeout(chatTyping.incoming.get(key));
+  chatTyping.incoming.delete(key);
+  if (event.typing) {
+    chatTyping.incoming.set(key,setTimeout(() => {
+      chatTyping.incoming.delete(key);
+      renderChatTyping();
+    },5500));
+  }
+  renderChatTyping();
+}
+function handleChatTypingInput(event) {
+  const recipient = state.activeConversation?.id;
+  if (!recipient || !state.socket?.connected || !event.target.value.trim()) {
+    stopChatTyping();
+    return;
+  }
+  if (chatTyping.recipient && chatTyping.recipient !== recipient) stopChatTyping();
+  const now = Date.now();
+  if (!chatTyping.recipient || now - chatTyping.lastSent >= 1500) {
+    chatTyping.recipient = recipient;
+    chatTyping.lastSent = now;
+    state.socket.emit("typing:update",{recipientId:recipient,typing:true});
+  }
+  clearTimeout(chatTyping.idleTimer);
+  chatTyping.idleTimer = setTimeout(stopChatTyping,2500);
+}
+$("#chatInput")?.addEventListener("input",handleChatTypingInput);
+$("#chatInput")?.addEventListener("blur",() => stopChatTyping());
+window.addEventListener("pagehide",() => stopChatTyping());
+document.addEventListener("visibilitychange",() => {
+  if (document.hidden) { stopChatTyping(); clearIncomingTyping(); }
+});
 // ========================================
 // PEOKONECT CONNECTION NOTIFICATIONS
 // ========================================
@@ -438,8 +498,11 @@ function showPage(name){
 }
 function connectSocket(){
   if(!state.token)return;
+  if(typeof io !== "function") { toast("Calling service is unavailable. Refresh this page and try again."); return; }
   if(state.socket)state.socket.disconnect();
   state.socket=io({auth:{token:state.token}});
+  state.socket.on("typing:state", receiveChatTyping);
+  state.socket.on("disconnect", () => { stopChatTyping(false); clearIncomingTyping(); });
   state.socket.on("admin:activity", item => {if ($("#page-admin")?.classList.contains("active")) {
     prependActivity(item);
   }
@@ -602,10 +665,50 @@ async function loadFeed() {
   }
 }
 let newsRequestId = 0;
+async function loadPublishedNews(category, request) {
+  const grid = $("#publishedNewsArticles"), status = $("#publishedNewsStatus");
+  if (!grid || !status) return;
+  grid.replaceChildren();
+  status.textContent = "Loading Peokonect stories…";
+  try {
+    const {articles} = await api("/news/published?category=" + encodeURIComponent(category));
+    if (request !== newsRequestId) return;
+    status.textContent = articles.length ? "" : "No Peokonect stories in this category yet.";
+    for (const article of articles) {
+      const card = document.createElement("article");
+      card.className = "card news-article published-news-article";
+      if (article.mediaType === "video" && article.mediaUrl) {
+        const video = document.createElement("video");
+        video.className = "news-thumbnail";
+        video.src = article.mediaUrl;
+        if (article.thumbnailUrl) video.poster = article.thumbnailUrl;
+        video.controls = true; video.playsInline = true; video.preload = "metadata";
+        card.append(video);
+      } else if (article.mediaType === "image" && article.mediaUrl) {
+        const image = document.createElement("img");
+        image.className = "news-thumbnail";
+        image.src = article.mediaUrl; image.alt = article.title; image.loading = "lazy";
+        card.append(image);
+      }
+      const meta = document.createElement("small");
+      meta.textContent = "PEOKONECT · " + article.category + " · " + new Date(article.publishedAt).toLocaleDateString();
+      const title = document.createElement("h2"); title.textContent = article.title;
+      const summary = document.createElement("p"); summary.textContent = article.body.length > 180 ? article.body.slice(0,180) + "…" : article.body;
+      const details = document.createElement("details");
+      const read = document.createElement("summary"); read.textContent = "Read full story";
+      const body = document.createElement("p"); body.className = "news-story-body"; body.textContent = article.body;
+      details.append(read,body);
+      card.append(meta,title,summary,details); grid.append(card);
+    }
+  } catch(error) {
+    if (request === newsRequestId) status.textContent = error.message;
+  }
+}
 async function loadNews(category) {
   const grid = $("#newsArticles");
   if (!grid) return;
   const request = ++newsRequestId;
+  void loadPublishedNews(category, request);
   $$("[data-news-category]").forEach(button => {
     const active = button.dataset.newsCategory === category;
     button.classList.toggle("active", active);
@@ -848,6 +951,8 @@ function appendMessage(message) {
 
 
 async function openConversation(userId,name,photo){
+  stopChatTyping();
+  clearIncomingTyping();
   state.activeConversation={id:String(userId),name:name||"PEOKONECT member",photo:photo||""};
   $("#chatEmpty")?.classList.add("hidden");$("#activeChat")?.classList.remove("hidden");
   $("#chatUserName").textContent=state.activeConversation.name;
@@ -1378,7 +1483,7 @@ document.addEventListener("submit",async e=>{
   if(e.target.matches("#chatForm")){
     e.preventDefault();
     if(!state.activeConversation)return;
-    const input=$("#chatInput");const text=input.value.trim();if(!text)return;
+    const input=$("#chatInput");const text=input.value.trim();stopChatTyping();if(!text)return;
     const sendButton=e.target.querySelector("button[type=submit]");sendButton.disabled=true;
     try{const {message}=await api("/messages",{method:"POST",body:JSON.stringify({recipientId:state.activeConversation.id,text})});appendMessage(message);input.value="";await loadConversations();}
     catch(err){toast(err.message);}
@@ -1860,11 +1965,8 @@ async function acquireCallMedia(type) {
 // ============================================
 
 async function startOutgoingCall(userId, name, photo, type) {
-  if (!state.socket?.connected) {
-    return toast(
-      "Please log in and reconnect before making a call."
-    );
-  }
+  if (!state.token) return toast("Please log in before making a call.");
+  if (!["audio", "video"].includes(type) || !userId) return toast("Select a member to call.");
   if (state.call) {
     return toast("You already have an active call.");
   }
@@ -1872,6 +1974,37 @@ async function startOutgoingCall(userId, name, photo, type) {
     return toast("You cannot call yourself.");
   }
 
+  // Show immediate feedback even while the network or browser permission is pending.
+  const callId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const call = { id: callId, peerId: String(userId), peerName: name || "Member", photo,
+    type, initiator: true, localStream: null, pc: null, pendingIce: [], sent: false };
+  state.call = call;
+  $("#callTitle").textContent = `Calling ${call.peerName}`;
+  $("#callAvatar").textContent = (call.peerName[0] || "R").toUpperCase();
+  $("#localCallVideo").classList.add("hidden");
+  $("#remoteCallVideo").classList.add("hidden");
+  $("#callAcceptBtn").classList.add("hidden");
+  $("#callRejectBtn").classList.add("hidden");
+  $("#callEndBtn").classList.remove("hidden");
+  $("#callCameraBtn").classList.toggle("hidden", type !== "video");
+  callStatus("Connecting to calling service…");
+  callOverlay(true);
+  const current = () => state.call === call && !call.finished;
+  // Fail visibly instead of leaving the user waiting indefinitely.
+  call.setupTimer = setTimeout(() => {
+    if (current() && !call.ringing && !call.accepted) {
+      cleanupCall(call.sent);
+      toast("Call could not start. Check your network and microphone permissions, then try again.");
+    }
+  }, 25000);
+  try {
+    await waitForCallSocket();
+    if (!current()) return;
+  } catch (error) {
+    if (current()) { cleanupCall(false); toast(error.message); }
+    return;
+  }
+  callStatus("Checking connection…");
   // STEP 1: CHECK CONNECTION STATUS.
   let connection;
 
@@ -1882,7 +2015,8 @@ async function startOutgoingCall(userId, name, photo, type) {
     );
 
   } catch (error) {
-
+    if (!current()) return;
+    cleanupCall(false);
     return toast(
       error.message || "Could not verify your connection."
     );
@@ -1890,7 +2024,9 @@ async function startOutgoingCall(userId, name, photo, type) {
   }
 
   // STEP 2: IF NOT CONNECTED, DO NOT START CALL.
+  if (!current()) return;
   if (!connection.connected) {
+    cleanupCall(false);
 
     if (connection.status === "outgoing_pending") {
 
@@ -1954,7 +2090,8 @@ async function startOutgoingCall(userId, name, photo, type) {
 
   try {
 
-    const ice = await api("/calls/ice-config").catch(() => null);
+    callStatus("Allow microphone" + (type === "video" ? " and camera" : "") + " access to continue…");
+    const ice = await api("/calls/ice-config", { signal: globalThis.AbortSignal?.timeout?.(7000) }).catch(() => null);
 
     if (ice?.iceServers?.length) {
       rtcConfig = {
@@ -1963,23 +2100,11 @@ async function startOutgoingCall(userId, name, photo, type) {
     }
 
     // Request microphone/camera permission only after connection check.
+    if (!current()) return;
     const stream = await acquireCallMedia(type);
-
-    const callId = crypto.randomUUID
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random()}`;
-
-    state.call = {
-      id: callId,
-      peerId: String(userId),
-      peerName: name || "Member",
-      photo,
-      type,
-      initiator: true,
-      localStream: stream,
-      pc: null,
-      pendingIce: []
-    };
+    if (!current()) { stream.getTracks().forEach(track => track.stop()); return; }
+    call.localStream = stream;
+    if (!state.socket?.connected) throw new Error("Calling service disconnected. Please try again.");
 
     $("#callTitle").textContent =
       `Calling ${state.call.peerName}`;
@@ -2009,6 +2134,7 @@ async function startOutgoingCall(userId, name, photo, type) {
     callOverlay(true);
 
     // Server performs another independent connection check.
+    call.sent = true;
     state.socket.emit("call:initiate", {
       recipientId: String(userId),
       callId,
@@ -2016,8 +2142,8 @@ async function startOutgoingCall(userId, name, photo, type) {
     });
 
   } catch (error) {
-
-    cleanupCall(false);
+    if (!current()) return;
+    cleanupCall(call.sent);
 
     toast(
       error.message || "Could not access your microphone or camera."
@@ -2027,6 +2153,26 @@ async function startOutgoingCall(userId, name, photo, type) {
 
 }
 
+async function waitForCallSocket() {
+  if (!state.socket) connectSocket();
+  const socket = state.socket;
+  if (!socket) throw new Error("Calling service is unavailable. Refresh the page.");
+  if (socket.connected) return;
+  await new Promise((resolve, reject) => {
+    const finish = (error) => {
+      clearTimeout(timer);
+      socket.off("connect", onConnect);
+      socket.off("connect_error", onError);
+      error ? reject(error) : resolve();
+    };
+    const onConnect = () => finish();
+    const onError = () => finish(new Error("Could not connect to calling service. Check your internet connection."));
+    const timer = setTimeout(onError, 8000);
+    socket.once("connect", onConnect);
+    socket.once("connect_error", onError);
+    socket.connect();
+  });
+}
 
 
 
@@ -2034,8 +2180,12 @@ async function startOutgoingCall(userId, name, photo, type) {
 async function acceptIncomingCall() {
   const call = state.call;if (!call || call.initiator || !call.ringing) return;
   stopCallSound();
+  $("#callAcceptBtn").classList.add("hidden");
+  $("#callRejectBtn").classList.add("hidden");
+  $("#callEndBtn").classList.remove("hidden");
+  callStatus("Allow microphone" + (call.type === "video" ? " and camera" : "") + " access…");
   try {
-    const ice = await api("/calls/ice-config").catch(() => null);
+    const ice = await api("/calls/ice-config", { signal: globalThis.AbortSignal?.timeout?.(7000) }).catch(() => null);
     if (ice?.iceServers?.length) rtcConfig = { iceServers: ice.iceServers };
     const stream = await acquireCallMedia(call.type);
     if (state.call !== call || call.finished) {
@@ -2152,8 +2302,9 @@ function stopCallSound() {
 
 function cleanupCall(notify = true) {
   const call=state.call;
+  if (call) { call.finished = true; clearTimeout(call.setupTimer); }
   stopCallSound();
-  if (call && notify) state.socket?.emit("call:end",{callId:call.id});
+  if (call && notify && (!call.initiator || call.sent)) state.socket?.emit("call:end",{callId:call.id});
   if (call?.pc) { call.pc.ontrack=null;call.pc.close(); }
   call?.localStream?.getTracks().forEach(track=>track.stop());
   const local=$("#localCallVideo"),remote=$("#remoteCallVideo");
@@ -2178,12 +2329,15 @@ function setupCallSocketEvents() {
     const call = state.call;
     if (call?.id !== callId || !call.initiator || call.finished) return;
     call.ringing = true;
+    clearTimeout(call.setupTimer);
     callStatus("Ringing…");
     startCallSound(call);
   });
   state.socket.on("call:accepted", ({ callId }) => {
     if (state.call?.id !== callId || state.call.finished) return;
     stopCallSound();
+    state.call.accepted = true;
+    clearTimeout(state.call.setupTimer);
     createCallOffer();
   });
   state.socket.on("call:signal", handleCallSignal);
@@ -2192,6 +2346,7 @@ function setupCallSocketEvents() {
     const call = state.call;
     if (call?.id !== callId) return;
     call.finished = true;
+    clearTimeout(call.setupTimer);
     stopCallSound();
     callStatus(message);
     setTimeout(() => {
@@ -2203,7 +2358,7 @@ function setupCallSocketEvents() {
   state.socket.on("call:ended", ({ callId, reason }) => {
     finishCall(callId, reason === "no-answer" ? "No answer." : reason === "rejected" ? "Call declined." : "Call ended.");
   });
-  state.socket.on("call:error",data=>{toast(data.message||"Call could not be started.");cleanupCall(false);});
+  state.socket.on("call:error",data=>{if(data.callId && data.callId !== state.call?.id)return;toast(data.message||"Call could not be started.");cleanupCall(false);});
   state.socket.on("disconnect", () => { if (state.call) cleanupCall(false); });
 }
 document.addEventListener("click", async event => {
@@ -2215,6 +2370,7 @@ document.addEventListener("click", async event => {
     const name=callButton.dataset.callName||state.activeConversation?.name||"Member";
     const photo=callButton.dataset.callPhoto||state.activeConversation?.photo||"";
     if(userId) await startOutgoingCall(userId,name,photo,type);
+    else toast("Open a conversation or select a member before calling.");
     return;
   }
   if(event.target.closest("#callAcceptBtn")) return acceptIncomingCall();

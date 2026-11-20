@@ -104,6 +104,26 @@
 
     <section id="page-admin" class="page active">
       <div class="page-heading"><div><span class="eyebrow">PLATFORM CONTROL</span><h1>Admin <em>overview.</em></h1><p>Monitor registrations, sign-ins, online presence and community activity.</p></div><span class="live-pill"><i></i> LIVE ACTIVITY</span></div>
+      <section class="card news-admin-panel" id="newsAdminPanel">
+        <div class="panel-heading"><div><span class="eyebrow">EDITORIAL CONTROL</span><h2>Manage news</h2></div><a class="btn btn-outline" href="/news.html">View news ↗</a></div>
+        <p>Publish your own headlines, stories, photos and videos directly on Peokonect.</p>
+        <form id="newsAdminForm" class="news-admin-form">
+          <h3 id="newsFormHeading">Create news story</h3>
+          <label>Headline<input name="title" maxlength="180" required placeholder="Enter the news headline"></label>
+          <label>Category<select name="category"><option value="world">World</option><option value="africa">Africa</option><option value="business">Business</option><option value="technology">Technology</option><option value="sport">Sport</option></select></label>
+          <label>Full story<textarea name="body" rows="7" maxlength="20000" required placeholder="Write the news article…"></textarea></label>
+          <div class="news-admin-media-fields">
+            <label>Photo or video<input name="media" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"><small>Optional · up to 100 MB. Keep existing media when editing by leaving blank.</small></label>
+            <label>Video thumbnail (optional)<input name="thumbnail" type="file" accept="image/jpeg,image/png,image/webp"><small>Up to 10 MB. A thumbnail is generated automatically if not selected.</small></label>
+          </div>
+          <label id="newsRemoveMediaLabel" class="hidden"><span><input type="checkbox" name="removeMedia" value="true"> Remove existing media</span></label>
+          <div id="newsMediaPreview" class="news-media-preview"></div>
+          <div class="news-admin-actions"><button id="newsPublishBtn" type="submit" class="btn btn-primary">Publish news</button><button id="newsCancelEdit" type="button" class="btn btn-outline hidden">Cancel edit</button></div>
+          <p id="newsAdminStatus" role="status" class="news-status"></p>
+        </form>
+        <h3>Published stories</h3>
+        <div id="newsAdminList" class="news-admin-list" aria-live="polite">Loading stories…</div>
+      </section>
       <div class="stats-grid">
         <div class="stat-card"><small>Total members</small><strong id="statUsers">—</strong><span>Registered accounts</span></div>
         <div class="stat-card"><small>Online now</small><strong id="statOnline">—</strong><span>Currently connected</span></div>
@@ -134,5 +154,5 @@
       </div>
     </div>
   </div>
-  <script src="/socket.io/socket.io.js"></script><script src="/js/app.js"></script>
+  <script src="/socket.io/socket.io.js"></script><script src="/js/app.js"></script><script src="/js/news-admin.js"></script>
 </body></html>

@@ -163,10 +163,18 @@ io.on("connection", async socket => {
   const id = String(socket.user._id);
   onlineUsers.set(id, socket.id);
   socket.join(id);
-  await User.findByIdAndUpdate(id, { isOnline: true, lastSeen: new Date() });
-  await Activity.create({ user: id, type: "online", detail: "User came online" });
+  require("./utils/chatTyping")(socket, io, areAcceptedConnections);
   io.emit("presence:update", { userId: id, isOnline: true });
   if (socket.user.role === "admin") socket.join("admins");
+  // Presence bookkeeping must never delay or prevent registration of call listeners.
+  void (async () => {
+    try {
+      await User.findByIdAndUpdate(id, { isOnline: true, lastSeen: new Date() });
+      await Activity.create({ user: id, type: "online", detail: "User came online" });
+    } catch (error) {
+      console.error("PRESENCE UPDATE ERROR:", error.message);
+    }
+  })();
 
   socket.on("message:send", async payload => {
     // Message persistence and authorization are handled by the REST endpoint.
@@ -194,6 +202,7 @@ socket.on("call:initiate", async ({
       !callId ||
       !["audio", "video"].includes(mediaType)
     ) {
+      socket.emit("call:error", { callId, message: "Invalid call request. Please try again." });
       return;
     }
 
@@ -201,6 +210,7 @@ socket.on("call:initiate", async ({
       String(recipientId) === id ||
       activeCalls.has(String(callId))
     ) {
+      socket.emit("call:error", { callId, message: "This call cannot be started. Please try again." });
       return;
     }
 
@@ -238,10 +248,12 @@ socket.on("call:initiate", async ({
 
     if (!caller || caller.role !== "user" ||
         caller.status !== "active") {
+      socket.emit("call:error", { callId, message: "Your account is not available for calls." });
       return;
     }
 
     // Create call session.
+    if (!socket.connected) return;
     if (activeCalls.has(String(callId))) return;
     const session = {
       callId: String(callId),

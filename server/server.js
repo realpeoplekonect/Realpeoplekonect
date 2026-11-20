@@ -46,7 +46,11 @@ app.get("/share/profile/:id", async (req, res) => {
     res.type("html").send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><meta name="description" content="${description}"><meta property="og:type" content="profile"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:image" content="${image}"><meta property="og:url" content="${req.protocol}://${req.get("host")}${req.originalUrl}"><meta name="twitter:card" content="summary_large_image"><meta http-equiv="refresh" content="0;url=${target}"></head><body><p>Opening PEOKONECT profile...</p><script>location.replace(${JSON.stringify(target)});</script></body></html>`);
   } catch (err) { res.status(500).send("Could not load profile preview"); }
 });
-app.use(express.static(path.join(__dirname, "../public")));
+app.use(express.static(path.join(__dirname, "../public"), {
+  setHeaders(res, filePath) {
+    if (/\.(html|js|css)$/i.test(filePath)) res.setHeader("Cache-Control", "no-cache, must-revalidate");
+  }
+}));
 
 app.get("/api/health", (_req, res) => res.json({ ok: true, service: "PEOKONECT API" }));
 app.get("/api/calls/ice-config", protect, (_req, res) => {
@@ -163,7 +167,11 @@ io.on("connection", async socket => {
   const id = String(socket.user._id);
   onlineUsers.set(id, socket.id);
   socket.join(id);
-  require("./utils/chatTyping")(socket, io, areAcceptedConnections);
+  require("./utils/chatTyping")(socket, io, async (senderId, recipientId) => {
+    // Match the private-message route's permissions, independently of calling rules.
+    const sender = await User.findOne({_id:senderId,status:"active",connections:recipientId}).select("_id");
+    return !!sender && !!(await User.exists({_id:recipientId,status:"active"}));
+  });
   io.emit("presence:update", { userId: id, isOnline: true });
   if (socket.user.role === "admin") socket.join("admins");
   // Presence bookkeeping must never delay or prevent registration of call listeners.

@@ -22,8 +22,19 @@ function stopChatTyping(notify = true) {
   chatTyping.lastSent = 0;
 }
 function renderChatTyping() {
-  const indicator = $("#chatTypingStatus"), normal = $("#chatUserStatus");
-  if (!indicator || !normal) return;
+  const normal = $("#chatUserStatus");
+  if (!normal) return;
+  let indicator = $("#chatTypingStatus");
+  if (!indicator) {
+    // Older cached page templates might not contain the new markup yet.
+    indicator = document.createElement("small");
+    indicator.id = "chatTypingStatus";
+    indicator.className = "chat-typing-status hidden";
+    indicator.setAttribute("role","status");
+    indicator.setAttribute("aria-live","polite");
+    indicator.textContent = "typing...";
+    normal.after(indicator);
+  }
   const visible = chatTyping.incoming.size > 0 && !!state.activeConversation;
   indicator.classList.toggle("hidden", !visible);
   normal.classList.toggle("hidden", visible);
@@ -34,9 +45,8 @@ function clearIncomingTyping() {
   renderChatTyping();
 }
 function receiveChatTyping(event) {
-  if (!event || String(event.senderId) !== state.activeConversation?.id ||
-      typeof event.sessionId !== "string" || typeof event.typing !== "boolean" ||
-      document.body.dataset.currentPage !== "messages") return;
+  if (!event || String(event.senderId) !== String(state.activeConversation?.id) ||
+      typeof event.sessionId !== "string" || typeof event.typing !== "boolean") return;
   const key = event.sessionId;
   clearTimeout(chatTyping.incoming.get(key));
   chatTyping.incoming.delete(key);
@@ -44,28 +54,32 @@ function receiveChatTyping(event) {
     chatTyping.incoming.set(key,setTimeout(() => {
       chatTyping.incoming.delete(key);
       renderChatTyping();
-    },5500));
+    },7000));
   }
   renderChatTyping();
 }
 function handleChatTypingInput(event) {
   const recipient = state.activeConversation?.id;
-  if (!recipient || !state.socket?.connected || !event.target.value.trim()) {
+  if (!recipient || !event.target.value.trim()) {
     stopChatTyping();
     return;
   }
   if (chatTyping.recipient && chatTyping.recipient !== recipient) stopChatTyping();
   const now = Date.now();
-  if (!chatTyping.recipient || now - chatTyping.lastSent >= 1500) {
-    chatTyping.recipient = recipient;
+  chatTyping.recipient = String(recipient);
+  if (state.socket?.connected && now - chatTyping.lastSent >= 1250) {
     chatTyping.lastSent = now;
-    state.socket.emit("typing:update",{recipientId:recipient,typing:true});
+    state.socket.emit("typing:update",{recipientId:chatTyping.recipient,typing:true});
   }
   clearTimeout(chatTyping.idleTimer);
-  chatTyping.idleTimer = setTimeout(stopChatTyping,2500);
+  chatTyping.idleTimer = setTimeout(stopChatTyping,3500);
 }
-$("#chatInput")?.addEventListener("input",handleChatTypingInput);
-$("#chatInput")?.addEventListener("blur",() => stopChatTyping());
+document.addEventListener("input", event => {
+  if (event.target.id === "chatInput") handleChatTypingInput(event);
+});
+document.addEventListener("focusout", event => {
+  if (event.target.id === "chatInput") stopChatTyping();
+});
 window.addEventListener("pagehide",() => stopChatTyping());
 document.addEventListener("visibilitychange",() => {
   if (document.hidden) { stopChatTyping(); clearIncomingTyping(); }
@@ -502,7 +516,13 @@ function connectSocket(){
   if(state.socket)state.socket.disconnect();
   state.socket=io({auth:{token:state.token}});
   state.socket.on("typing:state", receiveChatTyping);
-  state.socket.on("disconnect", () => { stopChatTyping(false); clearIncomingTyping(); });
+  state.socket.on("connect", () => {
+    if (chatTyping.recipient && chatTyping.idleTimer) {
+      chatTyping.lastSent = Date.now();
+      state.socket.emit("typing:update",{recipientId:chatTyping.recipient,typing:true});
+    }
+  });
+  state.socket.on("disconnect", () => { chatTyping.lastSent = 0; clearIncomingTyping(); });
   state.socket.on("admin:activity", item => {if ($("#page-admin")?.classList.contains("active")) {
     prependActivity(item);
   }

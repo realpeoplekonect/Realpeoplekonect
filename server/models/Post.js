@@ -10,6 +10,7 @@ const postSchema = new mongoose.Schema({
 mediaPosterPublicId: { type: String, default: "" },
   mediaPublicId: String,
   caption: { type: String, maxlength: 1000, default: "" },
+  shareToken: { type: String, select: false },
   likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   comments: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },

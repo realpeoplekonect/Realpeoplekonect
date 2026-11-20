@@ -373,6 +373,13 @@ function showResetPassword(token) {
 
 function closeAuth(){ $("#authModal").classList.add("hidden"); $("#authForm").reset(); }
 function updateAuthUI(){
+  if (!$("#mainNav [data-page='news']")) {
+    const news = document.createElement("button");
+    news.className = "nav-link";
+    news.dataset.page = "news";
+    news.textContent = "News";
+    $("#mainNav").append(news);
+  }
   const logged=!!state.token;
   $("#loginOpen").classList.toggle("hidden",logged); $("#registerOpen").classList.toggle("hidden",logged);
   $("#profileButton").classList.toggle("hidden",!logged);
@@ -393,6 +400,7 @@ const PAGE_FILES = {
   home: "/index.html",
   discover: "/discover.html",
   feed: "/community.html",
+  news: "/news.html",
   messages: "/messages.html",
   connections: "/connections.html",
   profile: "/profile.html",
@@ -421,6 +429,7 @@ function showPage(name){
   window.scrollTo({top:0,behavior:"smooth"});
   if(name==="discover")loadDiscover();
   if(name==="feed")loadFeed();
+  if(name==="news")loadNews("world");
   if(name==="connections")loadRequests();
   if(name==="messages")loadMessages();
   if(name==="profile")loadProfile();
@@ -475,7 +484,7 @@ state.socket.on("message:new", async message => {
 
   } else {
     await loadConversations();
-    toast("You received a new message.");
+    if (String(message.sender) !== String(state.user?._id)) toast(message.callLog?.kind ? callLogLabel(message) : "You received a new message.");
   }
 });
 
@@ -592,6 +601,47 @@ async function loadFeed() {
     toast(e.message);
   }
 }
+let newsRequestId = 0;
+async function loadNews(category) {
+  const grid = $("#newsArticles");
+  if (!grid) return;
+  const request = ++newsRequestId;
+  $$("[data-news-category]").forEach(button => {
+    const active = button.dataset.newsCategory === category;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  $("#newsStatus").textContent = "Loading latest headlines…";
+  grid.replaceChildren();
+  try {
+    const data = await api("/news?category=" + encodeURIComponent(category));
+    if (request !== newsRequestId) return;
+    $("#newsStatus").textContent = (data.stale ? "Cached headlines · " : "Updated · ") + new Date(data.updatedAt).toLocaleString();
+    for (const article of data.articles) {
+      const card = document.createElement("article");
+      card.className = "card news-article";
+      const meta = document.createElement("small");
+      meta.textContent = article.source + (article.publishedAt ? " · " + new Date(article.publishedAt).toLocaleString() : "");
+      const title = document.createElement("h2");
+      title.textContent = article.title;
+      const link = document.createElement("a");
+      link.href = article.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Read full story ↗";
+      card.append(meta, title, link);
+      grid.append(card);
+    }
+  } catch (error) {
+    if (request !== newsRequestId) return;
+    $("#newsStatus").textContent = error.message;
+    const retry = document.createElement("button");
+    retry.className = "btn btn-outline";
+    retry.textContent = "Try again";
+    retry.onclick = () => loadNews(category);
+    grid.append(retry);
+  }
+}
 function postCard(p){
   const authorId = p.author?._id;
   const authorName = escapeHTML(p.author?.name || "PEOKONECT member");
@@ -659,7 +709,7 @@ ${p.mediaType === "video" ? `
     
     
     <div class="post-edit-actions"><button type="button" class="btn btn-ghost post-edit-cancel">Cancel</button><button type="submit" class="btn btn-primary">Save changes</button></div></form>` : ""}
-    <div class="post-actions"><button class="like-btn" data-id="${p._id}">♡ ${p.likes?.length||0} likes</button><span>💬 ${p.comments?.length||0} comments</span></div>
+    <div class="post-actions"><button class="like-btn" data-id="${p._id}">♡ ${p.likes?.length||0} likes</button><span>💬 ${p.comments?.length||0} comments</span><button type="button" class="post-share-btn" data-id="${p._id}">↗ Share</button></div>
     <div class="comment-list">${comments}</div>
     <form class="comment-form" data-id="${p._id}"><input name="text" maxlength="500" placeholder="Write a kind comment..." required><button>Post</button></form>
   </article>`;
@@ -680,10 +730,19 @@ const requestHTML = requests.map(r=>`<div class="request-row"><div class="connec
 }
 
 function messageTime(value){return value?new Date(value).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}):"";}
+function callLogLabel(message) {
+  const log = message.callLog;
+  if (!log?.kind) return message.text || "";
+  const direction = String(message.sender) === String(state.user?._id) ? "Outgoing" : "Incoming";
+  const duration = Math.max(0, Number(log.durationSeconds) || 0);
+  const formatted = `${Math.floor(duration / 60)}m ${duration % 60}s`;
+  return `${log.kind === "video" ? "▣" : "☎"} ${direction} ${log.kind} call · ${log.outcome}${["completed", "disconnected"].includes(log.outcome) ? " · " + formatted : ""}`;
+}
 function renderConversationItem(item){
   const user=item.user; const last=item.lastMessage;
   return `<button type="button" class="conversation-item ${state.activeConversation?.id===String(user._id)?"active":""}" data-conversation-id="${user._id}" data-name="${escapeHTML(user.name)}" data-photo="${escapeHTML(user.photo||"")}"><img src="${escapeHTML(user.photo||"https://placehold.co/90x90/191919/ff8129?text=L")}" alt=""><span class="conversation-copy"><strong>${escapeHTML(user.name)}</strong><small>${escapeHTML
     (
+   last?.callLog?.kind ? callLogLabel(last) :
    last?.mediaType === "image" ? "📷 Image" :
    last?.mediaType === "audio" ? "🎤 Voice message" :
    last?.mediaType === "video" ? "▣ Video" :
@@ -755,7 +814,8 @@ function appendMessage(message) {
   if (message.text) {
     const bubble = document.createElement("div");
     bubble.className = "chat-bubble";
-    bubble.textContent = message.text;
+    if (message.callLog?.kind) bubble.classList.add("call-history-bubble");
+    bubble.textContent = message.callLog?.kind ? callLogLabel(message) : message.text;
     row.append(bubble);
   }
 
@@ -823,8 +883,6 @@ function galleryTile(photo, own = false) {
             </p>
         `).join("");
 
-    const ownerId = photo.owner?._id || photo.owner;
-
     return `
         <article class="gallery-tile">
 
@@ -851,8 +909,8 @@ function galleryTile(photo, own = false) {
                         ♡ ${likes} likes
                     </button>
 
-                    <button class="share-btn"
-                        data-share-url="${location.origin}/share/profile/${ownerId}">
+                    <button class="gallery-share-btn"
+                        data-share-url="${location.origin}/share/gallery/${encodeURIComponent(photo._id)}">
                         ↗ Share
                     </button>
 
@@ -1256,6 +1314,24 @@ if (e.target.closest("#backToLogin")) {
   const galleryLike=e.target.closest(".gallery-like-btn");if(galleryLike){try{const d=await api(`/users/gallery/${galleryLike.dataset.id}/like`,{method:"POST"});galleryLike.textContent=`${d.liked?"♥":"♡"} ${d.likes} likes`;}catch(err){toast(err.message);}}
   const galleryDelete=e.target.closest(".gallery-delete");if(galleryDelete&&confirm("Remove this photo from your profile gallery?")){try{await api(`/users/gallery/${galleryDelete.dataset.id}`,{method:"DELETE"});await loadGallery(state.user._id,true);toast("Photo deleted.");}catch(err){toast(err.message);}}
   const share=e.target.closest(".share-btn");if(share){const url=share.dataset.shareUrl;try{if(navigator.share)await navigator.share({title:"PEOKONECT profile",text:"Take a look at this PEOKONECT profile",url});else{await navigator.clipboard.writeText(url);toast("Profile link copied. You can paste it on your social platforms.");}}catch(err){if(err.name!=="AbortError")toast("Could not share this link.");}}
+  const postShare = e.target.closest(".post-share-btn,.gallery-share-btn");
+  if (postShare) {
+    postShare.disabled = true;
+    try {
+      const path = postShare.dataset.shareUrl || (await api(`/posts/${encodeURIComponent(postShare.dataset.id)}/share`, { method: "POST" })).path;
+      const url = new URL(path, location.origin).href;
+      if (navigator.share) {
+        try { await navigator.share({ title: "PEOKONECT", url }); return; }
+        catch (error) { if (error.name === "AbortError") return; }
+      }
+      try { await navigator.clipboard.writeText(url); toast("Post link copied. Share it with anyone."); }
+      catch { window.prompt("Copy this link to share the post:", url); }
+    } catch (error) { toast(error.message); }
+    finally { postShare.disabled = false; }
+    return;
+  }
+  const newsCategory = e.target.closest("[data-news-category]");
+  if (newsCategory) { loadNews(newsCategory.dataset.newsCategory); return; }
   if(e.target.closest("#logoutButton")) {
     try { await api("/auth/logout",{method:"POST"}); } catch (_) {}
     if(state.socket) state.socket.disconnect();
@@ -2125,7 +2201,7 @@ function setupCallSocketEvents() {
 
   state.socket.on("call:rejected", ({ callId }) => finishCall(callId, "Call declined."));
   state.socket.on("call:ended", ({ callId, reason }) => {
-    finishCall(callId, reason === "no-answer" ? "No answer." : "Call ended.");
+    finishCall(callId, reason === "no-answer" ? "No answer." : reason === "rejected" ? "Call declined." : "Call ended.");
   });
   state.socket.on("call:error",data=>{toast(data.message||"Call could not be started.");cleanupCall(false);});
   state.socket.on("disconnect", () => { if (state.call) cleanupCall(false); });

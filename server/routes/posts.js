@@ -6,6 +6,8 @@ const Post = require("../models/Post");
 const Activity = require("../models/Activity");
 const { protect } = require("../middleware/auth");
 const cloudinary = require("../utils/cloudinary");
+const crypto = require("node:crypto");
+const mongoose = require("mongoose");
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -112,6 +114,21 @@ router.get("/", protect, async (req, res) => {
 });
 
 // CREATE A NEW POST.
+// A published community post can be shared by an authenticated member.
+router.post("/:id/share", protect, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: "Post not found." });
+  try {
+    const filter = { _id: req.params.id, status: "published" };
+    await Post.updateOne({ ...filter, shareToken: { $exists: false } },
+      { $set: { shareToken: crypto.randomBytes(24).toString("hex") } });
+    const post = await Post.findOne(filter).select("+shareToken");
+    if (!post?.shareToken) return res.status(404).json({ message: "Post not found." });
+    res.json({ path: "/share/post/" + post.shareToken });
+  } catch (err) {
+    res.status(500).json({ message: "Could not create share link." });
+  }
+});
+
 router.post(
   "/",
   protect,

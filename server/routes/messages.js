@@ -127,9 +127,9 @@ router.get("/:userId", protect, async (req, res) => {
           recipient: req.user._id
         }
       ]
-    }).sort({ createdAt: 1 }).limit(500).lean();
+    }).sort({ createdAt: -1, _id: -1 }).limit(500).lean();
 
-    res.json({ messages, user: otherUser });
+    res.json({ messages: messages.reverse(), user: otherUser });
 
   } catch (error) {
     console.error("LOAD MESSAGES ERROR:", error);

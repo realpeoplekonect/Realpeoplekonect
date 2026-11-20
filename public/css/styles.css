@@ -1336,3 +1336,16 @@ footer .footer-brand-logo { display: block; width: 170px; height: 58px; object-f
 @media (max-width: 600px) {
   .gallery-tile .gallery-video { height: 180px; }
 }
+.news-categories{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 20px}
+.news-categories .active{background:var(--orange);border-color:var(--orange)}
+.news-status{color:#777;font-size:13px;margin:16px 0}
+.news-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:18px}
+.news-article{display:flex;flex-direction:column;gap:12px;min-height:170px}
+.news-article small{color:var(--muted)}
+.news-article h2{font:800 20px/1.4 Manrope,sans-serif;margin:0}
+.news-article a{margin-top:auto;color:#b75b1b;font-weight:700;text-decoration:none}
+.call-history-bubble{font-weight:700;border:1px solid #e7c4ac;border-radius:12px;padding:12px}
+.shared-post-view{max-width:820px;margin:30px auto;padding:0 18px}
+.shared-post-view article{margin-top:20px}
+.shared-post-view article>img,.shared-post-view video{display:block;width:100%;max-height:75vh;object-fit:contain;background:#171717;border-radius:10px;margin:18px 0}
+.shared-post-view article>a{display:inline-block;text-decoration:none;margin-top:16px}

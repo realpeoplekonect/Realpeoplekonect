@@ -30,6 +30,11 @@ const schema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  callLog: {
+    kind: { type: String, enum: ["audio", "video"] },
+    outcome: { type: String, enum: ["completed", "missed", "declined", "cancelled", "disconnected"] },
+    durationSeconds: Number
+  },
   readAt: Date
 }, { timestamps: true });
 

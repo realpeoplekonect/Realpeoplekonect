@@ -1,4 +1,5 @@
 const router = require("express").Router();
+router.use(require("./newsAdmin"));
 
 // Fixed publisher feeds, never user-supplied network destinations.
 const feeds = {
